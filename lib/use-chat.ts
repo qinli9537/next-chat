@@ -43,6 +43,7 @@ interface ChatState {
     abortStream: () => void
 }
 
+// 这里使用模块级变量，而不使用store是因为遵循zustand 最佳实践： store放状态，模块变量放副作用引用
 let currentRequest: CRequestClass | null = null
 
 function generateId(): string {
