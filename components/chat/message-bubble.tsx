@@ -5,7 +5,7 @@ import { User, Bot, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { MarkdownRender } from './markdown-render'
-import type { ChatMessage } from '@/lib/use-chat'
+import type { ChatMessage } from '@/lib/store/types'
 import { MessageActions } from './message-actions'
 
 interface MessageBubbleProps {

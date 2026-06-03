@@ -4,7 +4,7 @@ import { Copy, Check, ThumbsUp, RefreshCw, ThumbsDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import type { ChatMessage } from '@/lib/use-chat'
+import type { ChatMessage } from '@/lib/store/types'
 
 interface MessageActionsProps {
     message: ChatMessage
