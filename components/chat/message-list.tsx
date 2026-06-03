@@ -4,7 +4,7 @@ import React, { useEffect, useRef } from 'react'
 import { MessageCircle } from 'lucide-react'
 import { ScrollArea } from '../ui/scroll-area'
 import { MessageBubble } from './message-bubble'
-import type { ChatMessage } from '../../lib/use-chat'
+import type { ChatMessage } from '@/lib/store/types'
 
 interface MessageListProps {
     messages: ChatMessage[]
