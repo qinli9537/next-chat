@@ -11,20 +11,18 @@
 
 type ProviderType = 'mock' | 'openai' | 'ollama'
 
-const DEFAULT_PROVIDER: ProviderType = 'openai'
+const DEFAULT_PROVIDER: ProviderType = (process.env.ACTIVE_PROVIDER as ProviderType) || 'mock'
 
 const PROVIDER_CONFIG = {
-    mock: {
-
-    },
+    mock: {},
     openai: {
-        baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
-        apiKey: 'sk-b17e0bff7e1e4a199cc37e697e5c2a2c',
-        model: 'qwen-max',
+        baseUrl: process.env.OPENAI_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+        apiKey: process.env.OPENAI_API_KEY || '',
+        model: process.env.OPENAI_MODEL || 'qwen-max',
     },
     ollama: {
-        baseUrl: 'https://mlvoca.com/api/generate',
-        model: 'deepseek-r1:1.5b',
+        baseUrl: process.env.OLLAMA_BASE_URL || 'https://mlvoca.com/api/generate',
+        model: process.env.OLLAMA_MODEL || 'deepseek-r1:1.5b',
     },
 } as const
 
