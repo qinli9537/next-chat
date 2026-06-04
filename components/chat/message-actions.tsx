@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import type { ChatMessage } from '@/lib/store/types'
+import { getActiveContent } from '@/lib/store/utils'
 
 interface MessageActionsProps {
     message: ChatMessage
@@ -15,14 +16,15 @@ interface MessageActionsProps {
 
 export function MessageActions({ message, isLastAssistant, onGenerate, onFeedback }: MessageActionsProps) {
     const [copied, setCopied] = useState(false)
+    const activeChild = getActiveContent(message)
 
     const handleCopy = useCallback(() => {
-        navigator.clipboard.writeText(message.content)
+        navigator.clipboard.writeText(activeChild.content ?? '')
         setCopied(true)
         setTimeout(() => {
             setCopied(false)
         }, 2000)
-    }, [message.content])
+    }, [activeChild.content])
 
     const handleLike = useCallback(() => {
         onFeedback(message.id, 'like')

@@ -10,10 +10,11 @@ interface MessageListProps {
     messages: ChatMessage[]
     isStreaming: boolean
     onGenerate: () => void
-    onFeedback: (id: string, feedback: 'like' | 'dislike'| null) => void
+    onFeedback: (id: string, feedback: 'like' | 'dislike' | null) => void
+    onSwitchVersion: (id: string, direction: 'prev' | 'next') => void
 }
 
-export function MessageList({ messages, isStreaming, onGenerate, onFeedback }: MessageListProps) {
+export function MessageList({ messages, isStreaming, onSwitchVersion, onGenerate, onFeedback }: MessageListProps) {
     // 让滚动条自然滚动到最底部
     const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -42,12 +43,14 @@ export function MessageList({ messages, isStreaming, onGenerate, onFeedback }: M
         <ScrollArea className="flex-1 min-h-0 overflow-hidden">
             <div className="max-w-3xl mx-auto py-4">
                 {messages.map((message) => (
-                    <MessageBubble 
-                    key={message.id} 
-                    message={message}
-                    isLastAssistant={message.id === lastAssistantId}
-                    onGenerate={onGenerate}
-                    onFeedback={onFeedback}
+                    <MessageBubble
+                        key={message.id}
+                        message={message}
+                        isLastAssistant={message.id === lastAssistantId}
+                        isStreaming={isStreaming}
+                        onSwitchVersion={onSwitchVersion}
+                        onGenerate={onGenerate}
+                        onFeedback={onFeedback}
                     />
                 ))}
                 <div ref={bottomRef} />

@@ -1,22 +1,91 @@
 'use client'
 
 import React from 'react'
-import { User, Bot, Loader2 } from 'lucide-react'
+import { User, Bot, Loader2, ChevronDown, ChevronRight, ChevronLeft, Brain } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
 import { MarkdownRender } from './markdown-render'
 import type { ChatMessage } from '@/lib/store/types'
 import { MessageActions } from './message-actions'
+import { getActiveContent } from '@/lib/store/utils'
+
 
 interface MessageBubbleProps {
     message: ChatMessage
     isLastAssistant: boolean
+    isStreaming?: boolean
     onGenerate: () => void
-    onFeedback: (id: string, feedback: 'like' | 'dislike'| null) => void
+    onFeedback: (id: string, feedback: 'like' | 'dislike' | null) => void
+    onSwitchVersion: (id: string, direction: 'prev' | 'next') => void
 }
 
-export function MessageBubble({ message, isLastAssistant = false, onGenerate, onFeedback }: MessageBubbleProps) {
+/** 思考过程折叠面板 */
+function ThinkingBlock({ thinking, isThinking }: { thinking: string, isThinking: boolean }) {
+    return (
+        <Collapsible defaultOpen className="mb-2">
+            <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="group/trigger h-auto gap-1.5 px-1 py-1 text-xs text-muted-foreground hover:text-foreground">
+                    {isThinking ?
+                        (<Loader2 className="animate-spin h-3 w-3" />)
+                        : (<Brain className="h-3 w-3" />)
+                    }
+                    <span>{isThinking ? '思考中...' : '思考过程'}</span>
+                    <ChevronDown className="h-3 w-3 transition-transform duration-200 group-data-[state=closed]/trigger:hidden" />
+                    <ChevronRight className="h-3 w-3 transition-transform duration-200 group-data-[state=open]/trigger:hidden" />
+                </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+                <div className="border-l-2 border-muted-foreground/20 pl-3 mt-1">
+                    <p className="text-xs text-muted-foreground leading-5 whitespace-pre-wrap">
+                        {thinking}
+                    </p>
+                </div>
+            </CollapsibleContent>
+        </Collapsible>
+    )
+}
+
+/** 多版本切换器 */
+function VerisonSwitcher({ message, disabled, onSwitchVersion }: {
+    message: ChatMessage,
+    disabled: boolean,
+    onSwitchVersion: (id: string, direction: 'prev' | 'next') => void
+}) {
+    const totalVersions = message.children?.length ?? 0
+    if (totalVersions <= 1) return null
+
+    const currentIndex = message.currentIndex
+    return (
+        <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
+            <Button
+                variant="ghost"
+                size="sm"
+                className="h-5 w-5"
+                disabled={disabled || currentIndex === 0}
+                onClick={() => onSwitchVersion(message.id, 'prev')}>
+                <ChevronLeft className="h-3 w-3" />
+            </Button>
+            <span className="min-w-[3rem] text-center tabular-nums">
+                {currentIndex + 1}/{totalVersions}
+                </span>
+            <Button 
+                variant="ghost"
+                size="sm"
+                className="h-5 w-5"
+                disabled={disabled || currentIndex === totalVersions - 1}
+                onClick={() => onSwitchVersion(message.id, 'next')}>
+                <ChevronRight className="h-3 w-3" />
+            </Button>
+        </div>
+    )
+}
+
+export function MessageBubble({ message, isLastAssistant = false, isStreaming = false, onSwitchVersion, onGenerate, onFeedback }: MessageBubbleProps) {
     const isUser = message.role === 'user'
+    const activeChild = getActiveContent(message)
+    const hasThinking = !isUser && !!activeChild.thinking
 
     return (
         <div
@@ -40,29 +109,37 @@ export function MessageBubble({ message, isLastAssistant = false, onGenerate, on
                     {
                         isUser ? (
                             <p className="text-sm leading-7 whitespace-pre-wrap">
-                                {message.content}
+                                {activeChild.content}
                             </p>
-                        ) : message.loading && !message.content ? (
+                        ) : activeChild.loading && !activeChild.content && !hasThinking ? (
                             <div className="flex items-center gap-2 text-sm text-muted-foreground py-1">
                                 <Loader2 className="animate-spin h-4 w-4" />
-                                思考中...
+                                等待响应...
                             </div>
                         ) : (
-                            <MarkdownRender content={message.content} />
+                            <>
+                                {
+                                    hasThinking && (
+                                        <ThinkingBlock thinking={activeChild.thinking!} isThinking={!!activeChild.isThinking} />
+                                    )
+                                }
+                                {activeChild.content && <MarkdownRender content={activeChild.content} />}
+                            </>
                         )
                     }
                 </div>
-                {/* 操作按钮 */}
-            {
-                !isUser && message.content && (
-                    <MessageActions
-                        message={message}
-                        isLastAssistant={isLastAssistant}
-                        onGenerate={onGenerate}
-                        onFeedback={onFeedback}
-                    />
-                )
-            }
+                {/* 多版本切换器 */}
+                { !isUser && <VerisonSwitcher message={message} disabled={isStreaming} onSwitchVersion={onSwitchVersion} />}
+                {
+                    !isUser && activeChild.content && (
+                        <MessageActions
+                            message={message}
+                            isLastAssistant={isLastAssistant}
+                            onGenerate={onGenerate}
+                            onFeedback={onFeedback}
+                        />
+                    )
+                }
             </div>
         </div>
     )
