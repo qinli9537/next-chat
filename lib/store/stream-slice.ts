@@ -11,6 +11,9 @@ import { generateId } from "./utils"
 
 type ImmerSet = Parameters<StateCreator<ChatStore, [['zustand/immer', never], ['zustand/devtools', never]], [], StreamSlice>>[0]
 
+/**模块级变量：当前正在处理的流式请求实例 */
+let currentStreamRequest: ReturnType<typeof CRequest> | null = null
+
 function jsonSafeParse<T = Record<string, any>>(raw: string, fallback: T): T {
     try {
         return JSON.parse(raw)
@@ -72,7 +75,6 @@ function createStreamCallBacks(
                     message.loading = false
                 }
                 state.isStreaming = false
-                state.streamAbortController = null
             }, false, 'stream/onUpdate/error')
         },
         // 流结束
@@ -85,7 +87,6 @@ function createStreamCallBacks(
                     message.loading = false
                 }
                 state.isStreaming = false
-                state.streamAbortController = null
             }, false, 'stream/onUpdate/done')
         },
     }
@@ -107,7 +108,6 @@ function createStreamCallBacks(
             // Immer 写法：直接修改状态
             set((state) => {
                 state.isStreaming = false
-                state.streamAbortController = null
                 const { message } = findTargetMessage(state, conversationId, targetMessageId)
                 if (message) {
                     message.content = accumulatedContent
@@ -126,7 +126,6 @@ function createStreamCallBacks(
             // Immer 写法：直接修改状态
             set((state) => {
                 state.isStreaming = false
-                state.streamAbortController = null
                 const { message } = findTargetMessage(state, conversationId, targetMessageId)
                 if (message) {
                     message.content = errorContent
@@ -147,24 +146,21 @@ function startStreamRequest(
     targetMessageId: string,
     requestOptions: CRequestOptions,
 ) {
+    // 如果有进行中的流式请求，先取消
+    currentStreamRequest?.abort()
+    
     const request = CRequest(requestOptions)
+    currentStreamRequest = request
 
     // 将AbortController存储到store中
     const callbacks = createStreamCallBacks(set, conversationId, targetMessageId)
-    const wrappedCallbacks: CRequestCallbacks<SSEOutput> = {
-        ...callbacks,
-        onStream: (abortController) => {
-            set((state) => {
-                state.streamAbortController = abortController
-            }, false, 'stream/setAbortController')
-        },
-    }
+    
 
     const params: CRequestParams = {
         messages: message,
         stream: true,
     }
-    request.send(params, wrappedCallbacks)
+    request.send(params, callbacks)
 }
 
 
@@ -224,10 +220,10 @@ export const createStreamSlice: StateCreator<
         },
 
         abortStream: () => {
-            const { streamAbortController } = get()
-            streamAbortController?.abort()
+            currentStreamRequest?.abort()
+            currentStreamRequest = null
             set((state) => {
-                state.streamAbortController = null
+                state.isStreaming = false
             }, false, 'stream/abortStream')
         },
 

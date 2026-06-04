@@ -63,9 +63,6 @@ export interface MessageSlice {
 export interface StreamSlice {
     isStreaming: boolean
 
-    /** 当前流式请求的AbortController */
-    streamAbortController: AbortController | null
-
     /** 发送消息（触发流式请求） */
     sendMessage: (content: string, requestOptions: CRequestOptions) => void
     /** 中止当前流式请求 */
