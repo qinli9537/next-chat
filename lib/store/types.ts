@@ -4,11 +4,25 @@
 
 import type { CRequestOptions } from "../request"
 
+/** 流式事件类型 */
+export type SSEEventType =
+    | 'message' // 正常文本输出
+    | 'thinking' // 思考过程（reasoning token）
+    | 'error' // 服务端错误
+    | 'done' // 流结束信号
+
+export type SSEEventHandler = (data: Record<string, any>) => void
+
+
 /** 消息类型 */
 export interface ChatMessage {
     id: string
     role: 'user' | 'assistant'
     content: string
+    /** 思考过程（reasoning token） */
+    thinking?: string
+    /** 是否正在思考 */
+    isThinking?: boolean
     /** 消息创建时间 */
     timestamp: number
     loading?: boolean
@@ -48,6 +62,9 @@ export interface MessageSlice {
 /** 流式请求管理 slice状态 + 操作函数 */
 export interface StreamSlice {
     isStreaming: boolean
+
+    /** 当前流式请求的AbortController */
+    streamAbortController: AbortController | null
 
     /** 发送消息（触发流式请求） */
     sendMessage: (content: string, requestOptions: CRequestOptions) => void

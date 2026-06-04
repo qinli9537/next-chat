@@ -9,6 +9,14 @@
 
 type ProviderType = 'mock' | 'openai' | 'ollama'
 
+interface ParsedChunk {
+    content: string
+    event: 'message' | 'thinking'
+}
+
+/** 流结束信号事件 */
+const DONE_SIGNAL = '[DONE]' as const
+
 const DEFAULT_PROVIDER: ProviderType = 'mock'
 
 const PROVIDER_CONFIG = {
@@ -24,6 +32,8 @@ const PROVIDER_CONFIG = {
     },
 } as const
 
+const MOCK_THINKING = '让我分析一下用户的问题，然后给出一个详细的回答...'
+
 const MOCK_REPLY =
     '你好！我是一个智能助手。\n\n' +
     '我可以帮你完成以下任务：\n\n' +
@@ -37,9 +47,14 @@ const MOCK_REPLY =
     '``` \n\n' +
     '切换到真实 API TODO 待实现'
 
-function enqueueSSE(controller: ReadableStreamDefaultController<Uint8Array>, encoder: TextEncoder, content: string) {
+function enqueueSSE(
+    controller: ReadableStreamDefaultController<Uint8Array>, 
+    encoder: TextEncoder, 
+    content: string,
+    event: 'message' | 'thinking' | 'error' | 'done' = 'message'
+) {
     const sseData = JSON.stringify({ content })
-    controller.enqueue(encoder.encode(`event: delta\ndata: ${sseData}\n\n`))
+    controller.enqueue(encoder.encode(`event: ${event}\ndata: ${sseData}\n\n`))
 }
 
 function sseResponse(stream: ReadableStream) {
@@ -75,16 +90,26 @@ export async function POST(req: Request) {
 
 async function handleMock(messages: Array<{ role: string, content: string }>) {
     const userMessage = messages[messages.length - 1]?.content || ''
-    const replayText = `你说的是「 ${userMessage} 」对吧？\n\n${MOCK_REPLY}`
+    const replyText = `你说的是「 ${userMessage} 」对吧？\n\n${MOCK_REPLY}`
 
     const encoder = new TextEncoder()
-    const chunks = splitIntoChunks(replayText, 2)
+    const thinkingChunks = splitIntoChunks(MOCK_THINKING, 3)
+    const messageChunks = splitIntoChunks(replyText, 2)
+
     const stream = new ReadableStream<Uint8Array>({
         async start(controller) {
-            for (const chunk of chunks) {
-                await delay(50 + Math.random() * 80)
-                enqueueSSE(controller, encoder, chunk)
+            // 阶段1 发送思考过程（reasoning token）事件
+            for (const chunk of thinkingChunks) {
+                await delay(40 + Math.random() * 60)
+                enqueueSSE(controller, encoder, chunk, 'thinking')
             }
+            // 阶段2 发送正常文本输出事件
+            for (const chunk of messageChunks) {
+                await delay(50 + Math.random() * 80)
+                enqueueSSE(controller, encoder, chunk, 'message')
+            }
+            // 阶段3 发送流结束信号
+            enqueueSSE(controller, encoder, '', 'done')
             controller.close()
         }
     })
@@ -142,7 +167,7 @@ async function handleOllama(messages: Array<{ role: string, content: string }>) 
 async function proxyStream(
     url: string,
     init: { headers: Record<string, string>; body: string },
-    parseLine: (line: string) => string | null,
+    parseLine: (line: string) => ParsedChunk | typeof DONE_SIGNAL | null,
 ) {
     const encoder = new TextEncoder()
 
@@ -156,7 +181,7 @@ async function proxyStream(
 
                 if (!response.ok) {
                     const errorText = await response.text()
-                    enqueueSSE(controller, encoder, `API错误： ${response.status}: ${errorText}`)
+                    enqueueSSE(controller, encoder, `API错误： ${response.status}: ${errorText}`, 'error')
                     controller.close()
                     return
                 }
@@ -172,23 +197,25 @@ async function proxyStream(
                     buffer = lines.pop() || ''
 
                     for (const line of lines) {
-                        const content = parseLine(line)
-                        if (content === '[DONE]') break
-                        if (content) {
-                            enqueueSSE(controller, encoder, content)
+                        const result = parseLine(line)
+                        if (result === DONE_SIGNAL) break
+                        if (result) {
+                            enqueueSSE(controller, encoder, result.content, result.event)
                         }
                     }
                 }
                 if (buffer.trim()) {
-                    const content = parseLine(buffer)
-                    if (content && content !== '[DONE]') {
-                        enqueueSSE(controller, encoder, content)
+                    const result = parseLine(buffer)
+                    if (result && result !== DONE_SIGNAL) {
+                        enqueueSSE(controller, encoder, result.content, result.event)
                     }
                 }
+                // 发送流结束信号
+                enqueueSSE(controller, encoder, '', 'done')
                 controller.close()
             } catch (error) {
                 const message = error instanceof Error ? error.message : '未知错误'
-                enqueueSSE(controller, encoder, `请求失败： ${message}`)
+                enqueueSSE(controller, encoder, `请求失败： ${message}`, 'error')
                 controller.close()
             }
         }
@@ -199,16 +226,28 @@ async function proxyStream(
 /**
  * 解析OpenAI流式响应
  */
-function parseOpenAILine(line: string): string | null {
+function parseOpenAILine(line: string): ParsedChunk | typeof DONE_SIGNAL | null {
+    console.log('%c [ line ]-231', 'font-size:13px; background:pink; color:#bf2c9f;', line)
     const trimmedLine = line.trim()
     if (!trimmedLine || !trimmedLine.startsWith('data:')) {
         return null
     }
     const data = trimmedLine.slice(5).trim()
-    if (data === '[DONE]') return '[DONE]'
+    if (data === DONE_SIGNAL) return DONE_SIGNAL
 
     try {
-        return JSON.parse(data).choices[0]?.delta?.content || null
+        const delta = JSON.parse(data).choices[0]?.delta
+        console.log('%c [ delta ]-242', 'font-size:13px; background:pink; color:#bf2c9f;', delta)
+        if (!delta) return null
+        
+        if(delta.reasoning_content)  {
+            return { content: delta.reasoning_content, event: 'thinking' }
+        }
+        if(delta.content) {
+            return { content: delta.content, event: 'message' }
+        }
+
+        return null
     } catch {
         return null
     }
@@ -217,10 +256,13 @@ function parseOpenAILine(line: string): string | null {
 /**
  * 解析Ollama流式响应
  */
-function parseOllamaLine(line: string) {
+function parseOllamaLine(line: string): ParsedChunk | typeof DONE_SIGNAL | null {
     if (!line.trim()) return null
     try {
-        return JSON.parse(line).response || null
+        const response = JSON.parse(line).response
+        if (!response) return null
+        
+        return { content: response, event: 'message' }
     } catch {
         return null
     }
@@ -249,7 +291,7 @@ function errorResponse(message: string) {
     const encoder = new TextEncoder()
     const stream = new ReadableStream({
         start(controller) {
-            enqueueSSE(controller, encoder, `⚠️ ${message}`)
+            enqueueSSE(controller, encoder, `⚠️ ${message}`, 'error')
             controller.close()
         }
     })
