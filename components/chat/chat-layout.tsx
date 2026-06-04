@@ -48,6 +48,7 @@ export function ChatLayout() {
     const abortStream = useChatStore((state) => state.abortStream)
     const setMessageFeedback = useChatStore((state) => state.setMessageFeedback)
     const regenerateLastMessage = useChatStore((state) => state.regenerateLastMessage)
+    const switchMessageVersion = useChatStore((state) => state.switchMessageVersion)
 
     const currentConversation = activeConversation()
     const messages = currentConversation?.messages ?? []
@@ -112,6 +113,7 @@ export function ChatLayout() {
                     isStreaming={isStreaming}
                     onGenerate={handleGenerate}
                     onFeedback={setMessageFeedback}
+                    onSwitchVersion={switchMessageVersion}
                 />
                 {/* 输入框 */}
                 <ChatInput onSend={handleSend} onAbort={abortStream} isStreaming={isStreaming} />

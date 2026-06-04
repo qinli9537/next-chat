@@ -13,19 +13,44 @@ export type SSEEventType =
 
 export type SSEEventHandler = (data: Record<string, any>) => void
 
+export type MessageType = 'text' | 'image' |'markdown'| 'file'
+
+/** 附件 文件 */
+export interface FileItem {
+    uid: string
+    name: string
+    url?: string
+    size?: number
+    mimeType?: string
+}
+
+/** 单条子消息内容 */
+export interface MessageContent {
+    /** 文本 / markdown内容 */
+    content: string
+    /** 消息类型 */
+    msgType: MessageType
+    /** 附件 文件列表 */
+    fileList?: FileItem[]
+    /** 思考过程（reasoning token） */
+    thinking?: string
+    /** 是否正在思考 */
+    isThinking?: boolean
+    /** 是否正在加载 */
+    loading?: boolean
+}
+
 
 /** 消息类型 */
 export interface ChatMessage {
     id: string
     role: 'user' | 'assistant'
-    content: string
-    /** 思考过程（reasoning token） */
-    thinking?: string
-    /** 是否正在思考 */
-    isThinking?: boolean
+    /** 多版本消息内容列表 */
+    children: MessageContent[]
+    /** 当前展示的子消息索引 */
+    currentIndex: number
     /** 消息创建时间 */
     timestamp: number
-    loading?: boolean
     feedback?: 'like' | 'dislike' | null
 }
 
@@ -57,6 +82,8 @@ export interface ConversationSlice {
 export interface MessageSlice {
     /** 设置消息反馈 */
     setMessageFeedback: (id: string, feedback: 'like' | 'dislike' | null) => void
+    /** 切换消息的展示版本 */
+    switchMessageVersion: (id: string, direction: 'prev' | 'next') => void
 }
 
 /** 流式请求管理 slice状态 + 操作函数 */

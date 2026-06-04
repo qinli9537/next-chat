@@ -34,7 +34,7 @@ const PROVIDER_CONFIG = {
 
 const MOCK_THINKING = '让我分析一下用户的问题，然后给出一个详细的回答...'
 
-const MOCK_REPLY =
+const MOCK_REPLY =[
     '你好！我是一个智能助手。\n\n' +
     '我可以帮你完成以下任务：\n\n' +
     '1. **代码编写** - 支持多种编程语言\n' +
@@ -44,8 +44,16 @@ const MOCK_REPLY =
     '5. **其他任务** - 其他类型的任务，如数据处理、文本分析等\n\n' +
     '```typescript\n' +
     'console.log("hello world")\n' +
-    '``` \n\n' +
-    '切换到真实 API TODO 待实现'
+    '``` \n\n', 
+    '这是一个很好的问题！让我从以下几个角度来分析\n\n' +
+    '1. **问题的背景**: 这是一个关于数据处理的问题\n' +
+    '2. **问题的类型**: 数据处理问题\n\n' +
+    '3. **问题的解决方法**: 1. 收集数据\n' +
+    '4. **问题的解决方法**: 2. 处理数据\n' +
+    '5. **问题的解决方法**: 3. 分析数据\n' +
+    '6. **问题的解决方法**: 4. 可视化数据\n' +
+    '7. **问题的解决方法**: 5. 解决问题\n\n',
+]
 
 function enqueueSSE(
     controller: ReadableStreamDefaultController<Uint8Array>, 
@@ -90,7 +98,8 @@ export async function POST(req: Request) {
 
 async function handleMock(messages: Array<{ role: string, content: string }>) {
     const userMessage = messages[messages.length - 1]?.content || ''
-    const replyText = `你说的是「 ${userMessage} 」对吧？\n\n${MOCK_REPLY}`
+    const randomReply = MOCK_REPLY[Math.floor(Math.random() * MOCK_REPLY.length)]
+    const replyText = `你说的是「 ${userMessage} 」对吧？\n\n${randomReply}`
 
     const encoder = new TextEncoder()
     const thinkingChunks = splitIntoChunks(MOCK_THINKING, 3)
@@ -227,7 +236,6 @@ async function proxyStream(
  * 解析OpenAI流式响应
  */
 function parseOpenAILine(line: string): ParsedChunk | typeof DONE_SIGNAL | null {
-    console.log('%c [ line ]-231', 'font-size:13px; background:pink; color:#bf2c9f;', line)
     const trimmedLine = line.trim()
     if (!trimmedLine || !trimmedLine.startsWith('data:')) {
         return null
@@ -237,7 +245,6 @@ function parseOpenAILine(line: string): ParsedChunk | typeof DONE_SIGNAL | null 
 
     try {
         const delta = JSON.parse(data).choices[0]?.delta
-        console.log('%c [ delta ]-242', 'font-size:13px; background:pink; color:#bf2c9f;', delta)
         if (!delta) return null
         
         if(delta.reasoning_content)  {

@@ -3,11 +3,11 @@
  * 职责： 发送流式请求、处理流式响应、中止流式请求、重新发送流式请求
  */
 import type { StateCreator } from "zustand"
-import type { StreamSlice, ChatStore, ChatMessage, SSEEventType } from "./types"
+import type { StreamSlice, ChatStore, ChatMessage, SSEEventType, MessageContent } from "./types"
 import type { SSEOutput } from "../stream"
 import type { CRequestParams, CRequestOptions, CRequestCallbacks } from "../request"
 import { CRequest } from "../request"
-import { generateId } from "./utils"
+import { generateId, getActiveContent } from "./utils"
 
 type ImmerSet = Parameters<StateCreator<ChatStore, [['zustand/immer', never], ['zustand/devtools', never]], [], StreamSlice>>[0]
 
@@ -45,9 +45,10 @@ function createStreamCallBacks(
             accumulatedContent += data.content || ''
             set((state) => {
                 const { message } = findTargetMessage(state, conversationId, targetMessageId)
-                if (message) {
-                    message.content = accumulatedContent
-                    message.isThinking = false
+                const child = message && getActiveContent(message)
+                if (child) {
+                    child.content = accumulatedContent
+                    child.isThinking = false
                 }
 
             }, false, 'stream/onUpdate/message')
@@ -57,9 +58,10 @@ function createStreamCallBacks(
             accumulatedThinking += data.content || ''
             set((state) => {
                 const { message } = findTargetMessage(state, conversationId, targetMessageId)
-                if (message) {
-                    message.thinking = accumulatedThinking
-                    message.isThinking = true
+                const child = message && getActiveContent(message)
+                if (child) {
+                    child.thinking = accumulatedThinking
+                    child.isThinking = true
                 }
             }, false, 'stream/onUpdate/thinking')
         },
@@ -69,10 +71,11 @@ function createStreamCallBacks(
             accumulatedContent = errorText
             set((state) => {
                 const { message } = findTargetMessage(state, conversationId, targetMessageId)
-                if (message) {
-                    message.content = accumulatedContent
-                    message.isThinking = false
-                    message.loading = false
+                const child = message && getActiveContent(message)
+                if (child) {
+                    child.content = accumulatedContent
+                    child.isThinking = false
+                    child.loading = false
                 }
                 state.isStreaming = false
             }, false, 'stream/onUpdate/error')
@@ -81,10 +84,11 @@ function createStreamCallBacks(
         done: () => {
             set((state) => {
                 const { message } = findTargetMessage(state, conversationId, targetMessageId)
-                if (message) {
-                    message.content = accumulatedContent
-                    message.isThinking = false
-                    message.loading = false
+                const child = message && getActiveContent(message)
+                if (child) {
+                    child.content = accumulatedContent
+                    child.isThinking = false
+                    child.loading = false
                 }
                 state.isStreaming = false
             }, false, 'stream/onUpdate/done')
@@ -109,10 +113,11 @@ function createStreamCallBacks(
             set((state) => {
                 state.isStreaming = false
                 const { message } = findTargetMessage(state, conversationId, targetMessageId)
-                if (message) {
-                    message.content = accumulatedContent
-                    message.isThinking = false
-                    message.loading = false
+                const child = message && getActiveContent(message)
+                if (child) {
+                    child.content = accumulatedContent
+                    child.isThinking = false
+                    child.loading = false
                 }
             }, false, 'stream/onSuccess')
         },
@@ -127,10 +132,11 @@ function createStreamCallBacks(
             set((state) => {
                 state.isStreaming = false
                 const { message } = findTargetMessage(state, conversationId, targetMessageId)
-                if (message) {
-                    message.content = errorContent
-                    message.isThinking = false
-                    message.loading = false
+                const child = message && getActiveContent(message)
+                if (child) {
+                    child.content = errorContent
+                    child.isThinking = false
+                    child.loading = false
                 }
             }, false, 'stream/onError')
         }
@@ -148,13 +154,13 @@ function startStreamRequest(
 ) {
     // 如果有进行中的流式请求，先取消
     currentStreamRequest?.abort()
-    
+
     const request = CRequest(requestOptions)
     currentStreamRequest = request
 
     // 将AbortController存储到store中
     const callbacks = createStreamCallBacks(set, conversationId, targetMessageId)
-    
+
 
     const params: CRequestParams = {
         messages: message,
@@ -185,16 +191,17 @@ export const createStreamSlice: StateCreator<
             const userMessage: ChatMessage = {
                 id: generateId(),
                 role: 'user',
-                content,
+                children: [{ content, msgType: 'text' }],
+                currentIndex: 0,
                 timestamp: Date.now(),
             }
 
             const assistantMessage: ChatMessage = {
                 id: generateId(),
                 role: 'assistant',
-                content: '',
+                children: [{ content, msgType: 'text', loading: true, }],
+                currentIndex: 0,
                 timestamp: Date.now(),
-                loading: true,
             }
 
             // 添加用户消息 + 占位AI消息
@@ -213,8 +220,11 @@ export const createStreamSlice: StateCreator<
             // 这里使用get()获取最新的消息列表，因为set新增了新的消息
             const allMessages = get()
                 .conversations.find(c => c.id === conversationId)
-                ?.messages.filter(msg => !msg.loading)
-                .map(msg => ({ role: msg.role, content: msg.content })) ?? []
+                ?.messages.filter(msg => {
+                    const child = msg.children[msg.currentIndex]
+                    return child && !child.loading
+                })
+                .map(msg => ({ role: msg.role, content: msg.children[msg.currentIndex].content })) ?? []
 
             startStreamRequest(set, get, allMessages, conversationId, assistantMessage.id, requestOptions)
         },
@@ -242,22 +252,23 @@ export const createStreamSlice: StateCreator<
             // Immer 写法：直接修改状态
             set((state) => {
                 const conv = state.conversations.find(c => c.id === conversationId)
-                if (conv) {
-                    const msg = conv.messages.find(m => m.id === lastAssistant.id)
-                    if (msg) {
-                        msg.content = ''
-                        msg.thinking = ''
-                        msg.isThinking = false
-                        msg.loading = true
-                        msg.feedback = null
-                    }
+                if (!conv) return
+                const msg = conv.messages.find(m => m.id === lastAssistant.id)
+                if (msg) {
+                    const newChild:MessageContent= { content:'', msgType:'text', loading:true }
+                    msg.children.push(newChild)
+                    msg.currentIndex = msg.children.length - 1
+                    msg.feedback = null
                 }
                 state.isStreaming = true
             }, false, 'stream/regenerateLastMessage')
 
             // 收集 assistant 消息之前的所有非loading消息作为上下文
-            const allMessages = conversation.messages.filter(msg => !msg.loading && msg.id !== lastAssistant.id)
-                .map(msg => ({ role: msg.role, content: msg.content }))
+            const allMessages = conversation.messages.filter(msg => {
+                const child = msg.children[msg.currentIndex]
+                return child && !child.loading && msg.id !== lastAssistant.id
+            })
+            .map(msg => ({ role: msg.role, content: msg.children[msg.currentIndex].content }))
 
             startStreamRequest(set, get, allMessages, conversationId, lastAssistant.id, requestOptions)
         }
