@@ -1,31 +1,56 @@
 'use client'
 
-import React, { useCallback, useState } from "react"
+import React, { useCallback, useState, useMemo, useRef, useEffect } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
+import remarkMath from "remark-math"
 import rehypeHighlight from "rehype-highlight"
+import rehypeKatex from "rehype-katex"
 import { Copy, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
+import {
+    MermaidDiagram,
+    CardBlock,
+    useMarkdownPlugins,
+    findCustomRenderer,
+    type CustomCodeBlockRenderer,
+    type MarkdownPluginConfig,
+} from "./markdown-extensions"
+import { useStreamContent } from "@/lib/hooks/use-stream-content"
+import 'katex/dist/katex.min.css'
+import 'highlight.js/styles/github-dark.min.css'
 
 interface MarkdownRenderProps {
     content: string
     className?: string
+    /** 插件配置 */
+    plugins?: MarkdownPluginConfig[]
+    /** 是否开启流式渲染 */
+    streaming?: boolean
+    /** 是否是消息结束 仅当 streaming 为 true 时生效 */
+    isMessageEnd?: boolean
+    /** 输入完成回调 */
+    onTypingComplete?: () => void
 }
 
+interface CodeBlockProps extends React.HTMLAttributes<HTMLElement> {
+    children?: React.ReactNode
+    enableMermaid: boolean
+    customRenderers: CustomCodeBlockRenderer[]
+}
+
+const RAW_TEXT_LANGUAGE = new Set(['mermaid', 'card'])
+
 function extractText(node: React.ReactNode): string {
-    if (!node) {
-        return ''
-    }
-    if (typeof node === 'string') {
-        return node
-    }
-    if (typeof node === 'number') {
-        return String(node)
-    }
-    if (Array.isArray(node)) {
-        return node.map(extractText).join('')
-    }
-    if (typeof node === 'object' && node !== null &&  'props' in node) {
+    if (!node) return ''
+
+    if (typeof node === 'string') return node
+
+    if (typeof node === 'number') return String(node)
+
+    if (Array.isArray(node)) return node.map(extractText).join('')
+
+    if (typeof node === 'object' && node !== null && 'props' in node) {
         const props = (node as unknown as Record<string, Record<string, unknown>>).props
         return extractText(props.children as React.ReactNode)
     }
@@ -35,12 +60,30 @@ function extractText(node: React.ReactNode): string {
 function CodeBlock({
     className,
     children,
+    enableMermaid,
+    customRenderers,
     ...props
-}: React.HTMLAttributes<HTMLElement> & { children?: React.ReactNode }) {
+}: CodeBlockProps) {
     const [copied, setCopied] = useState(false)
+    const codeRef = useRef<HTMLElement>(null)
     const match = /language-(\w+)/.exec(className || '')
     const language = match?.[1] || 'plaintext'
-    const codeText = extractText(children).replace(/\n$/, '')
+
+    const reactText = useMemo(() => extractText(children).replace(/\n$/, ''), [children])
+
+    // 对于 mermaid 图表和 card 块，直接复制文本
+    const [domText, setDomText] = useState('')
+    const needsDomText = RAW_TEXT_LANGUAGE.has(language)
+
+    useEffect(() => {
+        if (needsDomText && codeRef.current) {
+            const text = (codeRef.current.textContent || '').replace(/\n$/, '')
+            setDomText(text)
+        }
+
+    }, [needsDomText, children])
+
+    const codeText = needsDomText && domText ? domText : reactText
 
     const handleCopy = useCallback(() => {
         navigator.clipboard.writeText(codeText)
@@ -50,19 +93,49 @@ function CodeBlock({
         }, 2000)
     }, [codeText])
 
+    // 行内代码
     if (!className) {
         return (
-            <code
-                className="rounded bg-muted px-1.5 py-0.5 text-sm font-mono"
-                {...props}
-            >
+            <code className="rounded bg-muted px-1.5 py-0.5 text-sm font-mono" {...props}>
                 {children}
             </code>
         )
     }
+
+    // Mermaid 图表渲染
+    if (enableMermaid && language === 'mermaid') {
+        return (
+            <>
+                <code ref={codeRef} className={className} style={{ display: 'none' }} {...props}>
+                    {children}
+                </code>
+                <MermaidDiagram content={codeText} />
+            </>
+        )
+    }
+
+    // Card 块渲染
+    if (language === 'card') {
+        return (
+            <>
+                <code ref={codeRef} className={className} style={{ display: 'none' }} {...props}>
+                    {children}
+                </code>
+                <CardBlock content={codeText} />
+            </>
+        )
+    }
+
+    // 自定义组件渲染器匹配
+    const customRenderer = findCustomRenderer(language, customRenderers)
+    if (customRenderer) {
+        const CustomComponent = customRenderer.component
+        return <CustomComponent content={codeText}>{children}</CustomComponent>
+    }
+
     return (
-        <div className=" group relative my-3">
-            <div className="flex items-center justify-between px-4 py-2 rounded-t-lg bg-zinc-800 text-xz text-zinc-400">
+        <div className="group relative my-3">
+            <div className="flex items-center justify-between px-4 py-2 rounded-t-lg bg-zinc-800 text-xs text-zinc-400">
                 <span>{language}</span>
                 <button
                     onClick={handleCopy}
@@ -72,7 +145,7 @@ function CodeBlock({
                     {copied ? '已复制' : '复制'}
                 </button>
             </div>
-            <pre className="!mt-0 !rounded-t-none">
+            <pre className="!mt-0 !rounded-t-none bg-zinc-800">
                 <code className={className} {...props}>
                     {children}
                 </code>
@@ -81,14 +154,65 @@ function CodeBlock({
     )
 }
 
-export function MarkdownRender({ content, className }: MarkdownRenderProps) {
+export function MarkdownRender({
+    content,
+    className,
+    plugins: propsPlugins,
+    streaming = false,
+    isMessageEnd = true,
+    onTypingComplete,
+}: MarkdownRenderProps) {
+    const contextPlugins = useMarkdownPlugins()
+    const config = useMemo(() =>
+        ({ ...contextPlugins, ...propsPlugins }),
+        [contextPlugins, propsPlugins])
+
+    const enableMermaid = config.mermaid !== false
+    const enableMath = config.math !== false
+    const customRenderers = config.customRenderers || []
+
+    // 流式渲染 如果开启streaming 通过hook逐步展示
+    const { displayContent } = useStreamContent({
+        content,
+        isMessageEnd: streaming ? isMessageEnd : true,
+        onTypingComplete,
+    })
+
+    const renderContent = streaming ? displayContent : content
+
+    // 动态组装 remark/rehype 插件
+    const remarkPlugins = useMemo(() => {
+        const plugins: Array<any> = [remarkGfm]
+        if (enableMath) plugins.push(remarkMath)
+        return plugins
+    }, [enableMath])
+
+    const rehypePlugins = useMemo(() => {
+        const plugins: Array<any> = [rehypeHighlight]
+        if (enableMath) plugins.push(rehypeKatex)
+        return plugins
+    }, [enableMath])
+
+    // 通过闭包将配置传递给 CodeBlock 组件, 避免每次渲染都引用
+    const codeComponent = useMemo(() => {
+        return function MarkdownCodeBlock(props: React.HTMLAttributes<HTMLElement> & { children?: React.ReactNode }) {
+            return (
+                <CodeBlock
+                    {...props}
+                    enableMermaid={enableMermaid}
+                    customRenderers={customRenderers}
+                />
+            )
+        }
+    }, [enableMermaid, customRenderers])
+
     return (
         <div className={cn('prose prose-sm max-w-none dark:prose-invert', className)}>
             <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                rehypePlugins={[rehypeHighlight]}
+                remarkPlugins={remarkPlugins}
+                rehypePlugins={rehypePlugins}
                 components={{
-                    code: CodeBlock,
+                    code: codeComponent,
                     p: ({ children }) => <p className="mb-3 last:mb-0 leading-7">{children}</p>,
                     ul: ({ children }) => <ul className="mb-3 list-disc pl-6 space-y-1">{children}</ul>,
                     ol: ({ children }) => <ol className="mb-3 list-decimal pl-6 space-y-1">{children}</ol>,
@@ -114,7 +238,7 @@ export function MarkdownRender({ content, className }: MarkdownRenderProps) {
                     td: ({ children }) => <td className="border border-border px-3 py-2">{children}</td>,
                 }}
             >
-                {content}
+                {renderContent}
             </ReactMarkdown>
         </div>
     )
