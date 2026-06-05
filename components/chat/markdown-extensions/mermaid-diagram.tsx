@@ -1,59 +1,69 @@
 'use client'
 
-import React, { useRef, useEffect, useCallback, useState } from 'react'
+import React, { useRef, useEffect, useState } from 'react'
 
 interface MermaidDiagramProps {
     content: string
 }
 
-let mermaidCounter = 0
+let mermaidInitialized = false
 
 export function MermaidDiagram({ content }: MermaidDiagramProps) {
     const containerRef = useRef<HTMLDivElement>(null)
     const [error, setError] = useState<string | null>(null)
-    const [loading, setLoading] = useState<boolean>(false)
-    const idRef = useRef<string>(`mermaid-${mermaidCounter++}-${Date.now()}`)
-
-    const renderDiagram = useCallback(async (code: string) => {
-        if (!code || !containerRef.current) return
-
-        try {
-            setLoading(true)
-            setError(null)
-            const mermaid = (await import('mermaid')).default
-            mermaid.initialize({ 
-                startOnLoad: false,
-                theme: 'default',
-                securityLevel: 'loose',
-                fontFamily: 'ui-sans-serif,system-ui, sans-serif',
-            })
-
-            const isValid = await mermaid.parse(code, { suppressErrors: true })
-            if (!isValid) {
-                throw new Error('无效的 Mermaid 代码')
-            }
-
-            // 清除末尾干扰字符,比如反引号、格子等
-            const cleanCode = code.replace(/[`\s]+$/g, '')
-            const { svg } = await mermaid.render(idRef.current, cleanCode, containerRef.current)
-            if(containerRef.current) {
-                containerRef.current.innerHTML = svg
-            } 
-            setLoading(false)
-        } catch (err) {
-            const errMsg = err instanceof Error ? err.message : '未知错误'
-            console.warn(`渲染 Mermaid 图失败: ${errMsg}`)
-            setError(errMsg)
-            setLoading(false)
-        }
-    }, [])
+    const [loading, setLoading] = useState<boolean>(true)
+    const renderCounterRef = useRef<number>(0)
 
     useEffect(() => {
-        if (!content) return
-        renderDiagram(content)
-    }, [content, renderDiagram])
+        if (!content || !containerRef.current) return
+        let cancelled = false
+        async function renderDiagram() {
+            try {
+                setLoading(true)
+                setError(null)
+                const mermaid = (await import('mermaid')).default
+                if(!mermaidInitialized){
+                    mermaid.initialize({
+                    startOnLoad: false,
+                    theme: 'default',
+                    securityLevel: 'loose',
+                    fontFamily: 'ui-sans-serif,system-ui, sans-serif',
+                })
+                mermaidInitialized = true
+                }
+                
+                // 清除末尾干扰字符,比如反引号、格子等
+                const cleanCode = content.replace(/[`\s]+$/g, '')
 
-    if(error) {
+                // 每次渲染使用唯一的 ID
+                const uniqueId = `mermaid-${Date.now()}-${renderCounterRef.current++}`
+
+                // 移除mermaid可能残留的临时SVG元素
+                const staleElement = document.getElementById(uniqueId)
+                if (staleElement) {
+                    staleElement.remove()
+                }
+
+                const { svg } = await mermaid.render(uniqueId, cleanCode)
+                if (containerRef.current && !cancelled) {
+                    containerRef.current.innerHTML = svg
+                }
+                if(!cancelled) setLoading(false)
+            } catch (err) {
+                if(cancelled) return
+                const errMsg = err instanceof Error ? err.message : '未知错误'
+                console.warn(`渲染 Mermaid 图失败: ${errMsg}`)
+                setError(errMsg)
+                setLoading(false)
+            }
+        }
+        renderDiagram()
+        return () => {
+            cancelled = true
+        }
+    }, [content])
+
+    if (error) {
         return (
             <div className="my-3 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950">
                 <p className="text-red-600 dark:text-red-400 text-xs mb-1">渲染 Mermaid 图失败: {error}</p>

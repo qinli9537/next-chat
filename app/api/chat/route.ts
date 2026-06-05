@@ -6,6 +6,20 @@
  * - openai openai 兼容格式
  * - ollama ollama 协议 NDJSON 格式
  */
+import {
+    MOCK_THINKING,
+    MOCK_REPLY,
+    MOCK_CALORIE_THINKING,
+    MOCK_CALORIE_REPLY,
+    MOCK_CODE_THINKING,
+    MOCK_CODE_REPLAY,
+    MOCK_TABLE_THINKING,
+    MOCK_TABLE_REPLAY,
+    MOCK_MERMAID_THINKING,
+    MOCK_MERMAID_REPLAY,
+    MOCK_MATH_THINKING,
+    MOCK_MATH_REPLAY,
+} from './mock-data'
 
 type ProviderType = 'mock' | 'openai' | 'ollama'
 
@@ -32,42 +46,9 @@ const PROVIDER_CONFIG = {
     },
 } as const
 
-const MOCK_THINKING = '让我分析一下用户的问题，然后给出一个详细的回答...'
-
-const MOCK_CALORIE_THINKING = '好的，让我根据你的饮食记录来计算，然后给出一个详细的回答...'
-
-const MOCK_CALORIE_REPLY = 
-'## 摄入热量分析\n\n' +
-'根据你的饮食记录，为你生成分析报告\n\n'+
-'```card\n' +
-'{\n  "title": "摄入热量分析",\n  "badge": {\n    "text": "已超标",\n    "variant": "destructive"\n  },\n  "tabs": [\n    {\n      "label": "计算过程",\n      "value": "process",\n      "content": "根据以下逻辑，我计算得出你今日已摄入热量超标，总摄入为 2180 大卡。"\n    },\n    {\n      "label": "营养参数",\n      "value": "params",\n      "content": "基础代谢率(BMR): 1650 大卡\\n活动系数: 1.375（轻度运动）\\n目标热量: 1800 大卡/天\\n蛋白质目标: 90g | 碳水目标: 200g | 脂肪目标: 60g"\n    }\n  ],\n  "sections": [\n    {\n      "items": [\n        {\n          "label": "是否超标: 是",\n          "status": "success",\n          "detail": "实际摄入 2180 大卡 > 目标摄入 1800 大卡，超标 380 大卡"\n        },\n        {\n          "label": "建议减少量 380 大卡",\n          "status": "info",\n          "highlight": "推荐运动消耗 40分钟",\n          "detail": "慢跑 2400 大卡 - 早餐 520 大卡 - 午餐 860 大卡 - 晚餐 800 大卡 = 超标 380 大卡"\n        }\n      ]\n    },\n    {\n      "title": "总结",\n      "items": [\n        {\n          "label": "午餐摄入了高热量食物（炸鸡套餐），导致总热量偏高",\n          "status": "info"\n        },\n        {\n          "label": "按每日 1800 大卡目标，建议晚间增加 40 分钟有氧运动消耗多余热量",\n          "status": "info"\n        },\n        {\n          "label": "蛋白质摄入达标（95g/90g），但碳水超标 15%，建议减少精制碳水",\n          "status": "success"\n        }\n      ]\n    }\n  ],\n  "footer": {\n    "buttons": [\n      {\n        "text": "确认记录",\n        "variant": "default"\n      },\n      {\n        "text": "查看详情",\n        "variant": "outline"\n      }\n    ]\n  }\n}'+
-'\n```\n\n'+
-'---\n\n以上是根据你的饮食记录计算出的摄入热量分析报告，有任何问题，请随时问我。\n\n'
-
-const MOCK_REPLY =[
-    '你好！我是一个智能助手。\n\n' +
-    '我可以帮你完成以下任务：\n\n' +
-    '1. **代码编写** - 支持多种编程语言\n' +
-    '2. **文档编写** - 生成专业文档\n' +
-    '3. **数据可视化** - 帮助分析数据\n' +
-    '4. **问题解决** - 提供问题解决建议\n' +
-    '5. **其他任务** - 其他类型的任务，如数据处理、文本分析等\n\n' +
-    '```typescript\n' +
-    'console.log("hello world")\n' +
-    '``` \n\n', 
-    '这是一个很好的问题！让我从以下几个角度来分析\n\n' +
-    '1. **问题的背景**: 这是一个关于数据处理的问题\n' +
-    '2. **问题的类型**: 数据处理问题\n\n' +
-    '3. **问题的解决方法**: 1. 收集数据\n' +
-    '4. **问题的解决方法**: 2. 处理数据\n' +
-    '5. **问题的解决方法**: 3. 分析数据\n' +
-    '6. **问题的解决方法**: 4. 可视化数据\n' +
-    '7. **问题的解决方法**: 5. 解决问题\n\n',
-]
-
 function enqueueSSE(
-    controller: ReadableStreamDefaultController<Uint8Array>, 
-    encoder: TextEncoder, 
+    controller: ReadableStreamDefaultController<Uint8Array>,
+    encoder: TextEncoder,
     content: string,
     event: 'message' | 'thinking' | 'error' | 'done' = 'message'
 ) {
@@ -106,19 +87,58 @@ export async function POST(req: Request) {
     }
 }
 
+const MOCK_SCENARIOS: Array<{
+    pattern: RegExp,
+    thinking: string,
+    reply: string
+    chunkSize: number
+}> = [
+        { 
+            pattern: /热量|饮食|卡路里/, 
+            thinking: MOCK_CALORIE_THINKING, 
+            reply: MOCK_CALORIE_REPLY,
+            chunkSize: 20 
+        },
+        { 
+            pattern: /代码|code|编程/, 
+            thinking: MOCK_CODE_THINKING, 
+            reply: MOCK_CODE_REPLAY,
+            chunkSize: 10 
+        },
+        { 
+            pattern: /表格|排行|对比/, 
+            thinking: MOCK_TABLE_THINKING, 
+            reply: MOCK_TABLE_REPLAY,
+            chunkSize: 12 
+        },
+        { 
+            pattern: /图表|可视化|流程图/, 
+            thinking: MOCK_MERMAID_THINKING, 
+            reply: MOCK_MERMAID_REPLAY,
+            chunkSize: 15 
+        },
+        { 
+            pattern: /数学|公式|方程/, 
+            thinking: MOCK_MATH_THINKING, 
+            reply: MOCK_MATH_REPLAY,
+            chunkSize: 10
+        },
+    ]
+
 async function handleMock(messages: Array<{ role: string, content: string }>) {
     const userMessage = messages[messages.length - 1]?.content || ''
 
-    // 匹配'热量'等关键词 返回mock数据
-    const isCalorieQuery = /热量|摄入|卡路里|饮食/.test(userMessage)
-    const thinking = isCalorieQuery ? MOCK_CALORIE_THINKING : MOCK_THINKING
+    // 匹配关键词 返回mock数据
+    const matched = MOCK_SCENARIOS.find(scenario => scenario.pattern.test(userMessage))
+    const thinking = matched?.thinking || MOCK_THINKING
 
     const randomReply = MOCK_REPLY[Math.floor(Math.random() * MOCK_REPLY.length)]
-    const replyText = isCalorieQuery ? MOCK_CALORIE_REPLY : `你说的是「 ${userMessage} 」对吧？\n\n${randomReply}`
+    const replyText = matched?.reply || `你说的是「 ${userMessage} 」对吧？\n\n${randomReply}`
+    const chunkSize = matched?.chunkSize || 4
 
     const encoder = new TextEncoder()
     const thinkingChunks = splitIntoChunks(thinking, 3)
-    const messageChunks = splitIntoChunks(replyText, isCalorieQuery ? 20 : 4)
+    const messageChunks = splitIntoChunks(replyText, chunkSize)
 
     const stream = new ReadableStream<Uint8Array>({
         async start(controller) {
@@ -261,11 +281,11 @@ function parseOpenAILine(line: string): ParsedChunk | typeof DONE_SIGNAL | null 
     try {
         const delta = JSON.parse(data).choices[0]?.delta
         if (!delta) return null
-        
-        if(delta.reasoning_content)  {
+
+        if (delta.reasoning_content) {
             return { content: delta.reasoning_content, event: 'thinking' }
         }
-        if(delta.content) {
+        if (delta.content) {
             return { content: delta.content, event: 'message' }
         }
 
@@ -283,7 +303,7 @@ function parseOllamaLine(line: string): ParsedChunk | typeof DONE_SIGNAL | null 
     try {
         const response = JSON.parse(line).response
         if (!response) return null
-        
+
         return { content: response, event: 'message' }
     } catch {
         return null
