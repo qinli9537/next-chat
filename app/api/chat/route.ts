@@ -34,6 +34,16 @@ const PROVIDER_CONFIG = {
 
 const MOCK_THINKING = '让我分析一下用户的问题，然后给出一个详细的回答...'
 
+const MOCK_CALORIE_THINKING = '好的，让我根据你的饮食记录来计算，然后给出一个详细的回答...'
+
+const MOCK_CALORIE_REPLY = 
+'## 摄入热量分析\n\n' +
+'根据你的饮食记录，为你生成分析报告\n\n'+
+'```card\n' +
+'{\n  "title": "摄入热量分析",\n  "badge": {\n    "text": "已超标",\n    "variant": "destructive"\n  },\n  "tabs": [\n    {\n      "label": "计算过程",\n      "value": "process",\n      "content": "根据以下逻辑，我计算得出你今日已摄入热量超标，总摄入为 2180 大卡。"\n    },\n    {\n      "label": "营养参数",\n      "value": "params",\n      "content": "基础代谢率(BMR): 1650 大卡\\n活动系数: 1.375（轻度运动）\\n目标热量: 1800 大卡/天\\n蛋白质目标: 90g | 碳水目标: 200g | 脂肪目标: 60g"\n    }\n  ],\n  "sections": [\n    {\n      "items": [\n        {\n          "label": "是否超标: 是",\n          "status": "success",\n          "detail": "实际摄入 2180 大卡 > 目标摄入 1800 大卡，超标 380 大卡"\n        },\n        {\n          "label": "建议减少量 380 大卡",\n          "status": "info",\n          "highlight": "推荐运动消耗 40分钟",\n          "detail": "慢跑 2400 大卡 - 早餐 520 大卡 - 午餐 860 大卡 - 晚餐 800 大卡 = 超标 380 大卡"\n        }\n      ]\n    },\n    {\n      "title": "总结",\n      "items": [\n        {\n          "label": "午餐摄入了高热量食物（炸鸡套餐），导致总热量偏高",\n          "status": "info"\n        },\n        {\n          "label": "按每日 1800 大卡目标，建议晚间增加 40 分钟有氧运动消耗多余热量",\n          "status": "info"\n        },\n        {\n          "label": "蛋白质摄入达标（95g/90g），但碳水超标 15%，建议减少精制碳水",\n          "status": "success"\n        }\n      ]\n    }\n  ],\n  "footer": {\n    "buttons": [\n      {\n        "text": "确认记录",\n        "variant": "default"\n      },\n      {\n        "text": "查看详情",\n        "variant": "outline"\n      }\n    ]\n  }\n}'+
+'\n```\n\n'+
+'---\n\n以上是根据你的饮食记录计算出的摄入热量分析报告，有任何问题，请随时问我。\n\n'
+
 const MOCK_REPLY =[
     '你好！我是一个智能助手。\n\n' +
     '我可以帮你完成以下任务：\n\n' +
@@ -98,12 +108,17 @@ export async function POST(req: Request) {
 
 async function handleMock(messages: Array<{ role: string, content: string }>) {
     const userMessage = messages[messages.length - 1]?.content || ''
+
+    // 匹配'热量'等关键词 返回mock数据
+    const isCalorieQuery = /热量|摄入|卡路里|饮食/.test(userMessage)
+    const thinking = isCalorieQuery ? MOCK_CALORIE_THINKING : MOCK_THINKING
+
     const randomReply = MOCK_REPLY[Math.floor(Math.random() * MOCK_REPLY.length)]
-    const replyText = `你说的是「 ${userMessage} 」对吧？\n\n${randomReply}`
+    const replyText = isCalorieQuery ? MOCK_CALORIE_REPLY : `你说的是「 ${userMessage} 」对吧？\n\n${randomReply}`
 
     const encoder = new TextEncoder()
-    const thinkingChunks = splitIntoChunks(MOCK_THINKING, 3)
-    const messageChunks = splitIntoChunks(replyText, 2)
+    const thinkingChunks = splitIntoChunks(thinking, 3)
+    const messageChunks = splitIntoChunks(replyText, isCalorieQuery ? 20 : 4)
 
     const stream = new ReadableStream<Uint8Array>({
         async start(controller) {
@@ -114,7 +129,7 @@ async function handleMock(messages: Array<{ role: string, content: string }>) {
             }
             // 阶段2 发送正常文本输出事件
             for (const chunk of messageChunks) {
-                await delay(50 + Math.random() * 80)
+                await delay(30 + Math.random() * 50)
                 enqueueSSE(controller, encoder, chunk, 'message')
             }
             // 阶段3 发送流结束信号
