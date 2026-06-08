@@ -6,8 +6,11 @@ import { Bot } from 'lucide-react'
 import { ScrollArea } from '../ui/scroll-area'
 import { MessageBubble } from './message-bubble'
 import { Suggestions } from './suggestions'
+import { useChatStore } from '@/lib/store'
+import { OPERATION_NAMES } from '@/lib/store/operation-slice'
 import type { ChatMessage } from '@/lib/store/types'
 import type { SuggestionItem, QuestionItem } from '@/lib/types'
+
 interface MessageListProps {
     /** 消息列表 */
     messages: ChatMessage[]
@@ -17,37 +20,24 @@ interface MessageListProps {
     welcomeQuestions?: QuestionItem[]
     /** 建议列表 */
     suggestions?: SuggestionItem[]
-    /** 生成消息 */
-    onGenerate: () => void
-    /** 反馈消息 */
-    onFeedback: (id: string, feedback: 'like' | 'dislike' | null) => void
-    /** 切换版本 */
-    onSwitchVersion: (id: string, direction: 'prev' | 'next') => void
-    /** 选择问题 */
-    onQuestionSelect?: (prompt: string) => void
-    /** 选择建议 */
-    onSuggestionSelect?: (prompt: string) => void
-
 }
 
 export function MessageList({
     messages,
     isStreaming,
-    onSwitchVersion,
-    onGenerate,
-    onFeedback,
     welcomeQuestions = [],
-    onQuestionSelect,
     suggestions = [],
-    onSuggestionSelect
 }: MessageListProps) {
+    // 从全局操作注册表获取操作
+    const operationsMap = useChatStore((state) => state.operationsMap)
+    
     // 让滚动条自然滚动到最底部
     const bottomRef = useRef<HTMLDivElement>(null)
 
     // 判断是否应该展示建议回复： 最后一条消息是assistant 且非流式中
     const showSuggestions = useMemo(() => {
-        return suggestions.length > 0 && !isStreaming && messages.at(-1)?.role === 'assistant' && !!onSuggestionSelect
-    }, [isStreaming, suggestions, messages, onSuggestionSelect])
+        return suggestions.length > 0 && !isStreaming && messages.at(-1)?.role === 'assistant' && !!operationsMap[OPERATION_NAMES.SUGGESTION_SELECT]
+    }, [isStreaming, suggestions, messages, operationsMap])
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -69,7 +59,7 @@ export function MessageList({
                             {welcomeQuestions.map((item) => (
                                 <button
                                     key={item.prompt}
-                                    onClick={() => onQuestionSelect?.(item.prompt)}
+                                    onClick={() => operationsMap[OPERATION_NAMES.QUESTION_SELECT]?.(item.prompt)}
                                     className={cn("flex items-center rounded-xl gap-2.5 bg-background border",
                                         "px-4 py-3 text-left text-sm shadow-sm transition-all",
                                         "hover:bg-accent hover:shadow-md active:scale-[0.98]"
@@ -98,15 +88,12 @@ export function MessageList({
                         message={message}
                         isLastAssistant={message.id === lastAssistantId}
                         isStreaming={isStreaming}
-                        onSwitchVersion={onSwitchVersion}
-                        onGenerate={onGenerate}
-                        onFeedback={onFeedback}
                     />
                 ))}
                 {showSuggestions && (
                     <Suggestions
                         items={suggestions}
-                        onSelect={onSuggestionSelect!}
+                        onSelect={(prompt) => operationsMap[OPERATION_NAMES.SUGGESTION_SELECT]?.(prompt)}
                         className="mt-1 ml-12"
                     />
                 )}

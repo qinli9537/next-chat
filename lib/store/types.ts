@@ -129,5 +129,24 @@ export interface StreamSlice {
     regenerateLastMessage: (requestOptions: CRequestOptions) => void
 }
 
+/** 全局操作处理函数 */
+export type OperationHandler = (...args: any[]) => any
+
+/** 全局操作注册slice */
+export interface OperationSlice {
+    /** 操作注册表 */
+    operationsMap: Record<string, OperationHandler>
+    /** 注册操作 */
+    registerOperation: (name: string, handler: OperationHandler) => void
+    /** 注销操作 */
+    unregisterOperation: (name: string) => void
+    /** 获取已注册的操作处理函数 */
+    getOperation: (name: string) => OperationHandler | undefined
+    /** 批量注册操作 */
+    registerOperations: (operations: Record<string, OperationHandler>) => void
+    /** 清空所有操作 */
+    clearOperations: () => void
+}
+
 /** 完整的ChatStore 类型 = Slice聚合 */
-export type ChatStore = ConversationSlice & MessageSlice & StreamSlice & FileSlice
+export type ChatStore = ConversationSlice & MessageSlice & StreamSlice & FileSlice & OperationSlice

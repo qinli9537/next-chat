@@ -6,11 +6,12 @@ import { Button } from '../ui/button'
 import { cn } from '@/lib/utils'
 import { ShortcutList } from './shortcut-list'
 import { Attachments } from './attachments'
+import { useChatStore } from '@/lib/store'
+import { OPERATION_NAMES } from '@/lib/store/operation-slice'
 import type { ShortcutItem } from '@/lib/types'
 import type { UploadingFile, FileItem } from '@/lib/store/types'
 
 interface ChatInputProps {
-    onSend: (content: string, fileList?: FileItem[]) => void
     onAbort: () => void
     isStreaming: boolean
     disabled?: boolean
@@ -23,7 +24,6 @@ interface ChatInputProps {
 }
 
 export function ChatInput({
-    onSend,
     onAbort,
     isStreaming,
     disabled,
@@ -45,6 +45,9 @@ export function ChatInput({
     const isComposingRef = useRef(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
+    // 从全局操作注册表获取操作
+    const operationsMap = useChatStore((state) => state.operationsMap)
+    
     const hasFiles = pendingFiles.length > 0
 
     const filteredShortcuts = useMemo(() => {
@@ -75,7 +78,7 @@ export function ChatInput({
 
         const readyFiles = hasFiles ? getReadyFiles() : undefined
         const sendContent = trimmedValue || (hasFiles ? '请分析以下文件' : '')
-        onSend(sendContent, readyFiles)
+        operationsMap[OPERATION_NAMES.SEND_MESSAGE]?.(sendContent, readyFiles)
 
         setValue('')
         setShortcutOpen(false)
@@ -85,7 +88,7 @@ export function ChatInput({
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto'
         }
-    }, [isStreaming, onSend, value, disabled, hasFiles, getReadyFiles, onClearFiles])
+    }, [isStreaming, operationsMap, value, disabled, hasFiles, getReadyFiles, onClearFiles])
 
     const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (shortcutOpen && filteredShortcuts.length > 0) {
@@ -167,34 +170,6 @@ export function ChatInput({
         }
     }, [onAddFiles])
 
-    const handleDragOver = useCallback((e: React.DragEvent) => {
-        e.preventDefault()
-        if (!disabled && !isStreaming) {
-            setIsDragging(true)
-        }
-    }, [disabled, isStreaming])
-
-    const handleDragLeave = useCallback((e: React.DragEvent) => {
-        e.preventDefault()
-        setIsDragging(false)
-    }, [])
-
-    const handleDrop = useCallback((e: React.DragEvent) => {
-        e.preventDefault()
-        setIsDragging(false)
-        if (disabled || isStreaming) return
-        
-        const droppedFiles = Array.from(e.dataTransfer.files)
-        if (droppedFiles.length > 0) {
-            onAddFiles(droppedFiles)
-            setShowAttachments(true)
-        }
-    }, [disabled, isStreaming, onAddFiles])
-
-
-
-
-
     useEffect(() => {
         const textarea = textareaRef.current
         if (!textarea) return
@@ -212,14 +187,37 @@ export function ChatInput({
         }
         document.addEventListener('mousedown', handleClick)
         return () => document.removeEventListener('mousedown', handleClick)
+    }, [shortcutOpen])
+
+    // 拖拽上传相关事件处理
+    const handleDragOver = useCallback((e: React.DragEvent) => {
+        e.preventDefault()
+        setIsDragging(true)
     }, [])
+
+    const handleDragLeave = useCallback((e: React.DragEvent) => {
+        e.preventDefault()
+        setIsDragging(false)
+    }, [])
+
+    const handleDrop = useCallback((e: React.DragEvent) => {
+        e.preventDefault()
+        setIsDragging(false)
+
+        if (disabled || isStreaming) return
+
+        const droppedFiles = Array.from(e.dataTransfer.files)
+        if (droppedFiles.length > 0) {
+            onAddFiles(droppedFiles)
+        }
+    }, [disabled, isStreaming, onAddFiles])
 
     return (
         <div className="border-t bg-background px-4 py-3">
             <div className="max-w-3xl mx-auto">
                 <div className="relative" ref={containerRef}>
                     <ShortcutList items={filteredShortcuts} visible={shortcutOpen} activeIndex={activeIndex} onSelect={handleShortcutSelect} />
-
+                    
                     {/* 附件面板 */}
                     {showAttachments && hasFiles && (
                         <div className="mb-3 rounded-xl border bg-background p-3 shadow-sm">
@@ -242,12 +240,10 @@ export function ChatInput({
                     )}
 
                     <div 
-                    className={cn('flex items-end gap-2 rounded-2xl border bg-background p-2 shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1',
-                        isDragging && 'ring-2 ring-primary border-primary bg-primary/5'
-                    )}
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
+                        className="flex items-end gap-2 rounded-2xl border bg-background p-2 shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1"
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
                     >
                         {/* 附件按钮 */}
                         <Button
@@ -310,6 +306,13 @@ export function ChatInput({
                             </Button>
                         )}
                     </div>
+                    
+                    {/* 拖拽提示 */}
+                    {isDragging && (
+                        <div className="absolute inset-0 flex items-center justify-center rounded-2xl border-2 border-primary bg-primary/10 pointer-events-none">
+                            <p className="text-sm font-medium text-primary">松开以上传文件</p>
+                        </div>
+                    )}
                 </div>
                 <p className="text-center text-xs text-muted-foreground mt-2">
                     AI 生成内容仅供参考

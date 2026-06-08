@@ -1,7 +1,6 @@
 'use client'
 
-import React from 'react'
-import { User, Bot, Loader2, ChevronDown, ChevronRight, ChevronLeft, Brain, FileText, FileImage, FileAudio, FileVideo, File, Download } from 'lucide-react'
+import { User, Bot, Loader2, ChevronDown, ChevronRight, ChevronLeft, Brain, FileText, FileImage, FileAudio, FileVideo, File } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -10,6 +9,8 @@ import { MarkdownRender } from './markdown-render'
 import type { ChatMessage, FileItem } from '@/lib/store/types'
 import { MessageActions } from './message-actions'
 import { getActiveContent } from '@/lib/store/utils'
+import { useChatStore } from '@/lib/store'
+import { OPERATION_NAMES } from '@/lib/store/operation-slice'
 
 /** 文件附件组件 */
 function FileAttachments({ files, isUser = false }: { files: FileItem[], isUser?: boolean }) {
@@ -125,51 +126,16 @@ function ThinkingBlock({ thinking, isThinking }: { thinking: string, isThinking:
     )
 }
 
-/** 多版本切换器 */
-function VerisonSwitcher({ message, disabled, onSwitchVersion }: {
-    message: ChatMessage,
-    disabled: boolean,
-    onSwitchVersion: (id: string, direction: 'prev' | 'next') => void
-}) {
-    const totalVersions = message.children?.length ?? 0
-    if (totalVersions <= 1) return null
-
-    const currentIndex = message.currentIndex
-    return (
-        <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
-            <Button
-                variant="ghost"
-                size="sm"
-                className="h-5 w-5"
-                disabled={disabled || currentIndex === 0}
-                onClick={() => onSwitchVersion(message.id, 'prev')}>
-                <ChevronLeft className="h-3 w-3" />
-            </Button>
-            <span className="min-w-[3rem] text-center tabular-nums">
-                {currentIndex + 1}/{totalVersions}
-            </span>
-            <Button
-                variant="ghost"
-                size="sm"
-                className="h-5 w-5"
-                disabled={disabled || currentIndex === totalVersions - 1}
-                onClick={() => onSwitchVersion(message.id, 'next')}>
-                <ChevronRight className="h-3 w-3" />
-            </Button>
-        </div>
-    )
-}
-
 interface MessageBubbleProps {
     message: ChatMessage
-    isLastAssistant: boolean
+    isLastAssistant?: boolean
     isStreaming?: boolean
-    onGenerate: () => void
-    onFeedback: (id: string, feedback: 'like' | 'dislike' | null) => void
-    onSwitchVersion: (id: string, direction: 'prev' | 'next') => void
 }
 
-export function MessageBubble({ message, isLastAssistant = false, isStreaming = false, onSwitchVersion, onGenerate, onFeedback }: MessageBubbleProps) {
+export function MessageBubble({ message, isLastAssistant = false, isStreaming = false }: MessageBubbleProps) {
+    // 从全局操作注册表获取操作
+    const operationsMap = useChatStore((state) => state.operationsMap)
+    
     const isUser = message.role === 'user'
     const activeChild = getActiveContent(message)
     const hasThinking = !isUser && !!activeChild.thinking
@@ -222,14 +188,48 @@ export function MessageBubble({ message, isLastAssistant = false, isStreaming = 
                     }
                 </div>
                 {/* 多版本切换器 */}
-                {!isUser && <VerisonSwitcher message={message} disabled={isStreaming} onSwitchVersion={onSwitchVersion} />}
+                {!isUser && (
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
+                        {(() => {
+                            const totalVersions = message.children?.length ?? 0
+                            const currentIndex = message.currentIndex
+                            if (totalVersions <= 1) return null
+                            
+                            const handleSwitch = (direction: 'prev' | 'next') => {
+                                operationsMap[OPERATION_NAMES.SWITCH_VERSION]?.(message.id, direction)
+                            }
+                            
+                            return (
+                                <>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-5 w-5"
+                                        disabled={isStreaming || currentIndex === 0}
+                                        onClick={() => handleSwitch('prev')}>
+                                        <ChevronLeft className="h-3 w-3" />
+                                    </Button>
+                                    <span className="min-w-[3rem] text-center tabular-nums">
+                                        {currentIndex + 1}/{totalVersions}
+                                    </span>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-5 w-5"
+                                        disabled={isStreaming || currentIndex === totalVersions - 1}
+                                        onClick={() => handleSwitch('next')}>
+                                        <ChevronRight className="h-3 w-3" />
+                                    </Button>
+                                </>
+                            )
+                        })()}
+                    </div>
+                )}
                 {
                     !isUser && activeChild.content && (
                         <MessageActions
                             message={message}
                             isLastAssistant={isLastAssistant}
-                            onGenerate={onGenerate}
-                            onFeedback={onFeedback}
                         />
                     )
                 }

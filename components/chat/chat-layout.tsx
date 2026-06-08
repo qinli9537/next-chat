@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { PanelLeftClose, PanelLeft } from 'lucide-react'
 import { Button } from '../ui/button'
@@ -12,7 +12,7 @@ import { MessageList } from './message-list'
 import type { CRequestOptions } from '@/lib/request'
 import type { FileItem } from '@/lib/store/types'
 import { REQUEST_OPTIONS, PROVIDER_OPTIONS, MOCK_SHORTCUTS, WELCOME_QUESTIONS, DEFAULT_SUGGESTIONS } from '@/lib/constants'
-
+import { OPERATION_NAMES } from '@/lib/store/operation-slice'
 
 export function ChatLayout() {
     const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -44,6 +44,10 @@ export function ChatLayout() {
     const clearFiles = useChatStore((state) => state.clearFiles)
     const getReadyFiles = useChatStore((state) => state.getReadyFiles)
 
+    // 注册全局操作
+    const registerOperations = useChatStore((state) => state.registerOperations)
+    const clearOperations = useChatStore((state) => state.clearOperations)
+
     const currentConversation = activeConversation()
     const messages = currentConversation?.messages ?? []
 
@@ -54,6 +58,22 @@ export function ChatLayout() {
     const handleGenerate = useCallback(() => {
         regenerateLastMessage(requestOptions)
     }, [regenerateLastMessage, requestOptions])
+
+    // 注册全局操作
+    useEffect(() => {
+        registerOperations({
+            [OPERATION_NAMES.SEND_MESSAGE]: handleSend,
+            [OPERATION_NAMES.REGENERATE]: handleGenerate,
+            [OPERATION_NAMES.FEEDBACK]: setMessageFeedback,
+            [OPERATION_NAMES.SWITCH_VERSION]: switchMessageVersion,
+            [OPERATION_NAMES.QUESTION_SELECT]: handleSend,
+            [OPERATION_NAMES.SUGGESTION_SELECT]: handleSend,
+        })
+
+        return () => {
+            clearOperations()
+        }
+    }, [registerOperations, clearOperations, handleSend, handleGenerate, setMessageFeedback, switchMessageVersion])
 
     return (
         <div className="flex h-screen overflow-hidden">
@@ -102,21 +122,15 @@ export function ChatLayout() {
                         </Select>
                     </div>
                 </div>
-                {/* 消息列表 */}
+                {/* 消息列表 - 不再传递回调，通过全局操作注册 */}
                 <MessageList
                     messages={messages}
                     isStreaming={isStreaming}
-                    onGenerate={handleGenerate}
-                    onFeedback={setMessageFeedback}
-                    onSwitchVersion={switchMessageVersion}
                     welcomeQuestions={WELCOME_QUESTIONS}
-                    onQuestionSelect={handleSend}
                     suggestions={DEFAULT_SUGGESTIONS}
-                    onSuggestionSelect={handleSend}
                 />
-                {/* 输入框 */}
+                {/* 输入框 - 不再传递回调，通过全局操作注册 */}
                 <ChatInput
-                    onSend={handleSend}
                     onAbort={abortStream}
                     isStreaming={isStreaming}
                     shortcuts={provider === 'mock' ? MOCK_SHORTCUTS : []}
