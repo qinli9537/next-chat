@@ -21,6 +21,8 @@ import {
     MOCK_MATH_REPLAY,
     MOCK_ECHART_THINKING,
     MOCK_ECHART_REPLAY,
+    MOCK_HTML_THINKING,
+    MOCK_HTML_REPLAY,
 } from './mock-data'
 
 type ProviderType = 'mock' | 'openai' | 'ollama'
@@ -126,9 +128,15 @@ const MOCK_SCENARIOS: Array<{
             chunkSize: 10
         },
         { 
-            pattern: /echart|销售额|图表/, 
+            pattern: /echart|图表可视化|销售额|数据图表/, 
             thinking: MOCK_ECHART_THINKING, 
             reply: MOCK_ECHART_REPLAY,
+            chunkSize: 15
+        },
+        { 
+            pattern: /html|交互动画|演示页面/, 
+            thinking: MOCK_HTML_THINKING, 
+            reply: MOCK_HTML_REPLAY,
             chunkSize: 15
         },
     ]

@@ -124,6 +124,105 @@ const MOCK_ECHART_REPLAY =
     '```\n\n' +
     '以上图表展示了产品销售数据和用户增长趋势的可视化效果。\n\n'
 
+const MOCK_HTML_THINKING = '让我创建一个交互式 HTML 演示页面...'
+
+const MOCK_HTML_REPLAY =
+    '## HTML 交互动画演示\n\n' +
+    '下面是一个交互式动画演示：\n\n' +
+    '```html\n' +
+    '<!DOCTYPE html>\n' +
+    '<html lang="zh-CN">\n' +
+    '<head>\n' +
+    '<meta charset="UTF-8">\n' +
+    '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
+    '<title>交互式动画演示</title>\n' +
+    '<style>\n' +
+    '  * { margin: 0; padding: 0; box-sizing: border-box; }\n' +
+    '  body { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); font-family: Arial, sans-serif; }\n' +
+    '  .container { text-align: center; }\n' +
+    '  h1 { color: #fff; margin-bottom: 30px; font-size: 28px; }\n' +
+    '  .box-container { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }\n' +
+    '  .box {\n' +
+    '    width: 120px; height: 120px; border-radius: 12px; display: flex; align-items: center; justify-content: center;\n' +
+    '    color: white; font-size: 14px; font-weight: bold; cursor: pointer;\n' +
+    '    transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(0,0,0,0.3);\n' +
+    '  }\n' +
+    '  .box:hover { transform: translateY(-5px) scale(1.05); }\n' +
+    '  .box-1 { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); animation: pulse 2s infinite; }\n' +
+    '  .box-2 { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); animation: pulse 2s infinite 0.5s; }\n' +
+    '  .box-3 { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); animation: pulse 2s infinite 1s; }\n' +
+    '  .box-4 { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); animation: pulse 2s infinite 1.5s; }\n' +
+    '  @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.4); } 50% { box-shadow: 0 0 0 15px rgba(255,255,255,0); } }\n' +
+    '  .counter { margin-top: 40px; color: #fff; font-size: 24px; }\n' +
+    '  .btn { padding: 12px 30px; margin: 10px; border: none; border-radius: 25px; cursor: pointer; font-size: 16px; transition: all 0.3s; }\n' +
+    '  .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }\n' +
+    '  .btn-primary:hover { transform: scale(1.05); }\n' +
+    '  .btn-secondary { background: transparent; border: 2px solid #fff; color: white; }\n' +
+    '  .btn-secondary:hover { background: rgba(255,255,255,0.1); }\n' +
+    '</style>\n' +
+    '</head>\n' +
+    '<body>\n' +
+    '<div class="container">\n' +
+    '  <h1>🎨 交互动画演示</h1>\n' +
+    '  <div class="box-container">\n' +
+    '    <div class="box box-1" onclick="changeColor(this)">点击变色</div>\n' +
+    '    <div class="box box-2" onclick="changeColor(this)">点击变色</div>\n' +
+    '    <div class="box box-3" onclick="changeColor(this)">点击变色</div>\n' +
+    '    <div class="box box-4" onclick="changeColor(this)">点击变色</div>\n' +
+    '  </div>\n' +
+    '  <div class="counter">点击次数: <span id="count">0</span></div>\n' +
+    '  <div>\n' +
+    '    <button class="btn btn-primary" onclick="reset()">重置</button>\n' +
+    '    <button class="btn btn-secondary" onclick="addBox()">添加方块</button>\n' +
+    '  </div>\n' +
+    '</div>\n' +
+    '<script>\n' +
+    '  let count = 0;\n' +
+    '  const colors = [\n' +
+    '    "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",\n' +
+    '    "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",\n' +
+    '    "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",\n' +
+    '    "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",\n' +
+    '    "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",\n' +
+    '    "linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)"\n' +
+    '  ];\n' +
+    '  function changeColor(box) {\n' +
+    '    count++;\n' +
+    '    document.getElementById("count").textContent = count;\n' +
+    '    const randomColor = colors[Math.floor(Math.random() * colors.length)];\n' +
+    '    box.style.background = randomColor;\n' +
+    '    box.style.transform = "scale(1.1)";\n' +
+    '    setTimeout(() => box.style.transform = "", 200);\n' +
+    '  }\n' +
+    '  function reset() {\n' +
+    '    count = 0;\n' +
+    '    document.getElementById("count").textContent = "0";\n' +
+    '    const boxes = document.querySelectorAll(".box");\n' +
+    '    boxes.forEach((box, i) => {\n' +
+    '      box.style.background = colors[i % colors.length];\n' +
+    '    });\n' +
+    '  }\n' +
+    '  function addBox() {\n' +
+    '    const container = document.querySelector(".box-container");\n' +
+    '    const newBox = document.createElement("div");\n' +
+    '    newBox.className = "box";\n' +
+    '    newBox.style.background = colors[Math.floor(Math.random() * colors.length)];\n' +
+    '    newBox.textContent = "新方块";\n' +
+    '    newBox.onclick = () => changeColor(newBox);\n' +
+    '    container.appendChild(newBox);\n' +
+    '  }\n' +
+    '</script>\n' +
+    '</body>\n' +
+    '</html>\n' +
+    '```\n\n' +
+    '以上演示包含：\n\n' +
+    '- 🎨 渐变背景和动画效果\n' +
+    '- 🖱️ 点击交互（变色、缩放）\n' +
+    '- 📊 计数器功能\n' +
+    '- ➕ 动态添加元素\n' +
+    '- 🔄 重置功能\n\n' +
+    '你可以点击预览按钮查看效果，或点击全屏按钮查看完整演示。\n\n'
+
 const MOCK_THINKING = '让我分析一下用户的问题，然后给出一个详细的回答...'
 
 const MOCK_MERMAID_THINKING = '让我用流程图来展示这个流程...'
@@ -310,4 +409,6 @@ export {
     MOCK_MATH_REPLAY,
     MOCK_ECHART_THINKING,
     MOCK_ECHART_REPLAY,
+    MOCK_HTML_THINKING,
+    MOCK_HTML_REPLAY,
 }

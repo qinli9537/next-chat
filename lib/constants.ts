@@ -62,6 +62,11 @@ export const MOCK_SHORTCUTS: ShortcutItem[] = [
         description: '生成数据可视化图表',
         prompt: '帮我生成一个EChart图表示例，展示不同产品的月度销售额对比',
     },
+    {
+        label: 'HTML演示',
+        description: '生成交互式HTML演示页面',
+        prompt: '帮我生成一个HTML交互动画演示示例',
+    },
 ]
 
 /**
