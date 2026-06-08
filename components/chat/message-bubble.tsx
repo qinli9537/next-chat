@@ -1,24 +1,66 @@
 'use client'
 
 import React from 'react'
-import { User, Bot, Loader2, ChevronDown, ChevronRight, ChevronLeft, Brain } from 'lucide-react'
+import { User, Bot, Loader2, ChevronDown, ChevronRight, ChevronLeft, Brain, FileText, FileImage, FileAudio, FileVideo, File, Download } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
 import { MarkdownRender } from './markdown-render'
-import type { ChatMessage } from '@/lib/store/types'
+import type { ChatMessage, FileItem } from '@/lib/store/types'
 import { MessageActions } from './message-actions'
 import { getActiveContent } from '@/lib/store/utils'
 
+/** 文件附件组件 */
+function FileAttachments({ files }: { files: FileItem[] }) {
+    if (!files || files.length === 0) return null
 
-interface MessageBubbleProps {
-    message: ChatMessage
-    isLastAssistant: boolean
-    isStreaming?: boolean
-    onGenerate: () => void
-    onFeedback: (id: string, feedback: 'like' | 'dislike' | null) => void
-    onSwitchVersion: (id: string, direction: 'prev' | 'next') => void
+    const getFileIcon = (mimeType?: string) => {
+        const iconClass = 'w-4 h-4'
+        if (!mimeType) return <File className={iconClass} />
+        
+        if (mimeType.startsWith('image/')) {
+            return <FileImage className={iconClass} />
+        }
+        if (mimeType.startsWith('audio/')) {
+            return <FileAudio className={iconClass} />
+        }
+        if (mimeType.startsWith('video/')) {
+            return <FileVideo className={iconClass} />
+        }
+        return <FileText className={iconClass} />
+    }
+
+    const formatFileSize = (size?: number) => {
+        if (!size) return '-'
+        if (size < 1024) return `${size} B`
+        if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`
+        return `${(size / (1024 * 1024)).toFixed(1)} MB`
+    }
+
+    return (
+        <div className="mt-3 space-y-2">
+            {files.map(file => (
+                <div
+                    key={file.uid}
+                    className="flex items-center gap-2 rounded-lg border border-muted/50 p-2 bg-muted/30"
+                >
+                    <div className="flex-shrink-0 text-muted-foreground">
+                        {getFileIcon(file.mimeType)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{file.name}</p>
+                        <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
+                    </div>
+                    {file.url && (
+                        <Button variant="ghost" size="sm" className="h-7" onClick={() => window.open(file.url, '_blank')}>
+                            <Download className="w-3.5 h-3.5" />
+                        </Button>
+                    )}
+                </div>
+            ))}
+        </div>
+    )
 }
 
 /** 思考过程折叠面板 */
@@ -82,6 +124,15 @@ function VerisonSwitcher({ message, disabled, onSwitchVersion }: {
     )
 }
 
+interface MessageBubbleProps {
+    message: ChatMessage
+    isLastAssistant: boolean
+    isStreaming?: boolean
+    onGenerate: () => void
+    onFeedback: (id: string, feedback: 'like' | 'dislike' | null) => void
+    onSwitchVersion: (id: string, direction: 'prev' | 'next') => void
+}
+
 export function MessageBubble({ message, isLastAssistant = false, isStreaming = false, onSwitchVersion, onGenerate, onFeedback }: MessageBubbleProps) {
     const isUser = message.role === 'user'
     const activeChild = getActiveContent(message)
@@ -108,9 +159,13 @@ export function MessageBubble({ message, isLastAssistant = false, isStreaming = 
                 >
                     {
                         isUser ? (
-                            <p className="text-sm leading-7 whitespace-pre-wrap">
-                                {activeChild.content}
-                            </p>
+                            <>
+                                <p className="text-sm leading-7 whitespace-pre-wrap">
+                                    {activeChild.content}
+                                </p>
+                                {/* 用户消息中的附件 */}
+                                <FileAttachments files={activeChild.fileList ?? []} />
+                            </>
                         ) : activeChild.loading && !activeChild.content && !hasThinking ? (
                             <div className="flex items-center gap-2 text-sm text-muted-foreground py-1">
                                 <Loader2 className="animate-spin h-4 w-4" />
@@ -124,6 +179,8 @@ export function MessageBubble({ message, isLastAssistant = false, isStreaming = 
                                     )
                                 }
                                 {activeChild.content && <MarkdownRender content={activeChild.content} />}
+                                {/* AI 消息中的附件 */}
+                                <FileAttachments files={activeChild.fileList ?? []} />
                             </>
                         )
                     }

@@ -9,6 +9,7 @@ import type { ChatStore } from "./types"
 import { createConversationSlice } from "./conversation-slice"
 import { createMessageSlice } from "./message-slice"
 import { createStreamSlice } from "./stream-slice"
+import { createFileSlice } from "./file-slice"
 
 export const useChatStore = create<ChatStore>()(
     devtools(
@@ -16,6 +17,7 @@ export const useChatStore = create<ChatStore>()(
             ...createConversationSlice(...args),
             ...createMessageSlice(...args),
             ...createStreamSlice(...args),
+            ...createFileSlice(...args),
         })),
         {
             name: 'chat-store',

@@ -10,6 +10,7 @@ import { ConversationList } from './conversation-list'
 import { ChatInput } from './chat-input'
 import { MessageList } from './message-list'
 import type { CRequestOptions } from '@/lib/request'
+import type { FileItem } from '@/lib/store/types'
 import { REQUEST_OPTIONS, PROVIDER_OPTIONS, MOCK_SHORTCUTS, WELCOME_QUESTIONS, DEFAULT_SUGGESTIONS } from '@/lib/constants'
 
 
@@ -35,12 +36,19 @@ export function ChatLayout() {
     const setMessageFeedback = useChatStore((state) => state.setMessageFeedback)
     const regenerateLastMessage = useChatStore((state) => state.regenerateLastMessage)
     const switchMessageVersion = useChatStore((state) => state.switchMessageVersion)
+    
+    // 文件上传相关
+    const pendingFiles = useChatStore((state) => state.pendingFiles)
+    const addFiles = useChatStore((state) => state.addFiles)
+    const removeFile = useChatStore((state) => state.removeFile)
+    const clearFiles = useChatStore((state) => state.clearFiles)
+    const getReadyFiles = useChatStore((state) => state.getReadyFiles)
 
     const currentConversation = activeConversation()
     const messages = currentConversation?.messages ?? []
 
-    const handleSend = useCallback((content: string) => {
-        sendMessage(content, requestOptions)
+    const handleSend = useCallback((content: string, fileList?: FileItem[]) => {
+        sendMessage(content, requestOptions, fileList)
     }, [sendMessage, requestOptions])
 
     const handleGenerate = useCallback(() => {
@@ -112,6 +120,11 @@ export function ChatLayout() {
                     onAbort={abortStream}
                     isStreaming={isStreaming}
                     shortcuts={provider === 'mock' ? MOCK_SHORTCUTS : []}
+                    pendingFiles={pendingFiles}
+                    onAddFiles={addFiles}
+                    onRemoveFile={removeFile}
+                    onClearFiles={clearFiles}
+                    getReadyFiles={getReadyFiles}
                 />
             </div>
         </div>
