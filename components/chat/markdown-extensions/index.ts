@@ -1,6 +1,7 @@
 export { MermaidDiagram } from './mermaid-diagram'
 export { InlineMath, BlockMath } from './latex-formula'
 export { CardBlock } from './card-block'
+export { EChartBlock } from './echart-block'
 export {
     MarkdownPluginProvider,
     useMarkdownPlugins,

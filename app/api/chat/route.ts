@@ -19,6 +19,8 @@ import {
     MOCK_MERMAID_REPLAY,
     MOCK_MATH_THINKING,
     MOCK_MATH_REPLAY,
+    MOCK_ECHART_THINKING,
+    MOCK_ECHART_REPLAY,
 } from './mock-data'
 
 type ProviderType = 'mock' | 'openai' | 'ollama'
@@ -106,13 +108,13 @@ const MOCK_SCENARIOS: Array<{
             chunkSize: 10 
         },
         { 
-            pattern: /表格|排行|对比/, 
+            pattern: /表格|排行|数据/, 
             thinking: MOCK_TABLE_THINKING, 
             reply: MOCK_TABLE_REPLAY,
             chunkSize: 12 
         },
         { 
-            pattern: /图表|可视化|流程图/, 
+            pattern: /流程|可视化|流程图/, 
             thinking: MOCK_MERMAID_THINKING, 
             reply: MOCK_MERMAID_REPLAY,
             chunkSize: 15 
@@ -122,6 +124,12 @@ const MOCK_SCENARIOS: Array<{
             thinking: MOCK_MATH_THINKING, 
             reply: MOCK_MATH_REPLAY,
             chunkSize: 10
+        },
+        { 
+            pattern: /echart|销售额|图表/, 
+            thinking: MOCK_ECHART_THINKING, 
+            reply: MOCK_ECHART_REPLAY,
+            chunkSize: 15
         },
     ]
 

@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils"
 import {
     MermaidDiagram,
     CardBlock,
+    EChartBlock,
     useMarkdownPlugins,
     findCustomRenderer,
     type CustomCodeBlockRenderer,
@@ -39,7 +40,7 @@ interface CodeBlockProps extends React.HTMLAttributes<HTMLElement> {
     customRenderers: CustomCodeBlockRenderer[]
 }
 
-const RAW_TEXT_LANGUAGE = new Set(['mermaid', 'card'])
+const RAW_TEXT_LANGUAGE = new Set(['mermaid', 'card', 'echart'])
 
 function extractText(node: React.ReactNode): string {
     if (!node) return ''
@@ -110,6 +111,18 @@ function CodeBlock({
                     {children}
                 </code>
                 <MermaidDiagram content={codeText} />
+            </>
+        )
+    }
+
+    // EChart 图表渲染
+    if (language === 'echart') {
+        return (
+            <>
+                <code ref={codeRef} className={className} style={{ display: 'none' }} {...props}>
+                    {children}
+                </code>
+                <EChartBlock content={codeText} />
             </>
         )
     }

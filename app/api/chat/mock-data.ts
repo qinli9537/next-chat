@@ -1,3 +1,129 @@
+const MOCK_ECHART_THINKING = '让我用图表来展示数据可视化...'
+
+const MOCK_ECHART_REPLAY =
+    '## EChart 数据可视化\n\n' +
+    '下面是一个展示不同产品月度销售额对比的图表：\n\n' +
+    '```echart\n' +
+    '{\n' +
+    '  "title": {\n' +
+    '    "text": "产品月度销售额对比",\n' +
+    '    "left": "center",\n' +
+    '    "textStyle": {\n' +
+    '      "fontSize": 16\n' +
+    '    }\n' +
+    '  },\n' +
+    '  "tooltip": {\n' +
+    '    "trigger": "axis",\n' +
+    '    "axisPointer": {\n' +
+    '      "type": "shadow"\n' +
+    '    }\n' +
+    '  },\n' +
+    '  "legend": {\n' +
+    '    "data": ["产品A", "产品B", "产品C"],\n' +
+    '    "bottom": 10\n' +
+    '  },\n' +
+    '  "grid": {\n' +
+    '    "left": "3%",\n' +
+    '    "right": "4%",\n' +
+    '    "bottom": "15%",\n' +
+    '    "top": "15%",\n' +
+    '    "containLabel": true\n' +
+    '  },\n' +
+    '  "xAxis": {\n' +
+    '    "type": "category",\n' +
+    '    "data": ["1月", "2月", "3月", "4月", "5月", "6月"]\n' +
+    '  },\n' +
+    '  "yAxis": {\n' +
+    '    "type": "value",\n' +
+    '    "name": "销售额(万元)"\n' +
+    '  },\n' +
+    '  "series": [\n' +
+    '    {\n' +
+    '      "name": "产品A",\n' +
+    '      "type": "bar",\n' +
+    '      "data": [120, 132, 101, 134, 190, 230],\n' +
+    '      "itemStyle": {\n' +
+    '        "color": "#5470c6"\n' +
+    '      }\n' +
+    '    },\n' +
+    '    {\n' +
+    '      "name": "产品B",\n' +
+    '      "type": "bar",\n' +
+    '      "data": [220, 182, 191, 234, 290, 330],\n' +
+    '      "itemStyle": {\n' +
+    '        "color": "#91cc75"\n' +
+    '      }\n' +
+    '    },\n' +
+    '    {\n' +
+    '      "name": "产品C",\n' +
+    '      "type": "bar",\n' +
+    '      "data": [150, 212, 161, 234, 390, 430],\n' +
+    '      "itemStyle": {\n' +
+    '        "color": "#fac858"\n' +
+    '      }\n' +
+    '    }\n' +
+    '  ]\n' +
+    '}\n' +
+    '```\n\n' +
+    '再来看一个折线图示例：\n\n' +
+    '```echart\n' +
+    '{\n' +
+    '  "title": {\n' +
+    '    "text": "用户增长趋势",\n' +
+    '    "left": "center"\n' +
+    '  },\n' +
+    '  "tooltip": {\n' +
+    '    "trigger": "axis"\n' +
+    '  },\n' +
+    '  "legend": {\n' +
+    '    "data": ["新增用户", "活跃用户"],\n' +
+    '    "bottom": 10\n' +
+    '  },\n' +
+    '  "grid": {\n' +
+    '    "left": "3%",\n' +
+    '    "right": "4%",\n' +
+    '    "bottom": "15%",\n' +
+    '    "containLabel": true\n' +
+    '  },\n' +
+    '  "xAxis": {\n' +
+    '    "type": "category",\n' +
+    '    "boundaryGap": false,\n' +
+    '    "data": ["1月", "2月", "3月", "4月", "5月", "6月"]\n' +
+    '  },\n' +
+    '  "yAxis": {\n' +
+    '    "type": "value",\n' +
+    '    "name": "人数(人)"\n' +
+    '  },\n' +
+    '  "series": [\n' +
+    '    {\n' +
+    '      "name": "新增用户",\n' +
+    '      "type": "line",\n' +
+    '      "data": [1200, 1320, 1010, 1340, 1900, 2300],\n' +
+    '      "smooth": true,\n' +
+    '      "lineStyle": {\n' +
+    '        "width": 3\n' +
+    '      },\n' +
+    '      "areaStyle": {\n' +
+    '        "opacity": 0.1\n' +
+    '      }\n' +
+    '    },\n' +
+    '    {\n' +
+    '      "name": "活跃用户",\n' +
+    '      "type": "line",\n' +
+    '      "data": [2200, 2820, 2910, 3340, 3900, 4300],\n' +
+    '      "smooth": true,\n' +
+    '      "lineStyle": {\n' +
+    '        "width": 3\n' +
+    '      },\n' +
+    '      "areaStyle": {\n' +
+    '        "opacity": 0.1\n' +
+    '      }\n' +
+    '    }\n' +
+    '  ]\n' +
+    '}\n' +
+    '```\n\n' +
+    '以上图表展示了产品销售数据和用户增长趋势的可视化效果。\n\n'
+
 const MOCK_THINKING = '让我分析一下用户的问题，然后给出一个详细的回答...'
 
 const MOCK_MERMAID_THINKING = '让我用流程图来展示这个流程...'
@@ -182,4 +308,6 @@ export {
     MOCK_MERMAID_REPLAY,
     MOCK_MATH_THINKING,
     MOCK_MATH_REPLAY,
+    MOCK_ECHART_THINKING,
+    MOCK_ECHART_REPLAY,
 }
