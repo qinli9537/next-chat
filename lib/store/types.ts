@@ -76,6 +76,8 @@ export interface ConversationSlice {
     setActiveConversation: (id: string) => void
     /** 删除会话 */
     deleteConversation: (id: string) => void
+    /** 重命名会话 */
+    renameConversation: (id: string, title: string) => void
 }
 
 /** 消息管理 slice状态 + 操作函数 */

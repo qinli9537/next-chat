@@ -29,6 +29,7 @@ export function ChatLayout() {
     const createConversation = useChatStore((state) => state.createConversation)
     const setActiveConversation = useChatStore((state) => state.setActiveConversation)
     const deleteConversation = useChatStore((state) => state.deleteConversation)
+    const renameConversation = useChatStore((state) => state.renameConversation)
     const sendMessage = useChatStore((state) => state.sendMessage)
     const abortStream = useChatStore((state) => state.abortStream)
     const setMessageFeedback = useChatStore((state) => state.setMessageFeedback)
@@ -57,6 +58,7 @@ export function ChatLayout() {
                         onSelect={setActiveConversation}
                         onCreate={createConversation}
                         onDelete={deleteConversation}
+                        onRename={renameConversation}
                     />
                 </div>
             </div>

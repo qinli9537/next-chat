@@ -199,7 +199,7 @@ export const createStreamSlice: StateCreator<
             const assistantMessage: ChatMessage = {
                 id: generateId(),
                 role: 'assistant',
-                children: [{ content, msgType: 'text', loading: true, }],
+                children: [{ content: '', msgType: 'text', loading: true, }],
                 currentIndex: 0,
                 timestamp: Date.now(),
             }
