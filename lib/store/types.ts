@@ -166,6 +166,8 @@ export type ChatStore = ConversationSlice & MessageSlice & StreamSlice & FileSli
     editingMessageId?: string | null
     /** 当前编辑的内容 */
     editContent?: string
+    /** 当前正在编辑的消息索引位置 */
+    editingMessageIndex?: number
     /** 当前选择的 provider */
     provider: string
     /** 设置 provider */

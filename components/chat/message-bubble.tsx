@@ -109,8 +109,17 @@ export function MessageBubble({ message, isLastAssistant = false, isStreaming = 
     const editingMessageId = useChatStore((state) => state.editingMessageId)
     const setEditContent = useChatStore((state) => state.setEditContent)
     const editContent = useChatStore((state) => state.editContent)
+    const sendMessage = useChatStore((state) => state.sendMessage)
+    const provider = useChatStore((state) => state.provider)
     const isEditing = editingMessageId === message.id
     const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+    /**
+     * 处理卡片按钮点击发送消息
+     */
+    const handleSendMessage = (content: string) => {
+        sendMessage(content, { baseURL: `/api/chat?provider=${provider}` })
+    }
 
     // 当进入编辑模式时，同步内容并聚焦光标
     useEffect(() => {
@@ -193,7 +202,7 @@ export function MessageBubble({ message, isLastAssistant = false, isStreaming = 
                                         />
                                     )
                                 }
-                                {activeChild.content && <MarkdownRender content={activeChild.content} />}
+                                {activeChild.content && <MarkdownRender content={activeChild.content} enabled={isLastAssistant} onSendMessage={handleSendMessage} />}
                                 {/* AI 消息中的附件 */}
                                 <FileAttachments files={activeChild.fileList ?? []} />
                             </>
