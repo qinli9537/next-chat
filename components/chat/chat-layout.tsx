@@ -1,10 +1,15 @@
 'use client'
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { PanelLeftClose, PanelLeft } from 'lucide-react'
+import { PanelLeftClose, PanelLeft, ChevronDown } from 'lucide-react'
 import { Button } from '../ui/button'
-import { Select, SelectTrigger, SelectValue, SelectGroup, SelectLabel, SelectItem, SelectContent } from '../ui/select'
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '../ui/dropdown-menu'
 import { useChatStore } from '@/lib/store'
 import { useHydration } from '@/lib/hooks/use-hydration'
 import { ConversationList } from './conversation-list'
@@ -17,8 +22,11 @@ import { OPERATION_NAMES } from '@/lib/store/operation-slice'
 
 export function ChatLayout() {
     const [sidebarOpen, setSidebarOpen] = useState(true)
-    const [provider, setProvider] = useState('mock')
     const isHydrated = useHydration()
+
+    // 从全局 store 获取 provider
+    const provider = useChatStore((state) => state.provider)
+    const setProvider = useChatStore((state) => state.setProvider)
 
     const requestOptions: CRequestOptions = useMemo(() => ({
         ...REQUEST_OPTIONS,
@@ -149,21 +157,29 @@ export function ChatLayout() {
                         }
                     </div>
 
-                    <div className="w-32">
-                        <Select value={provider} onValueChange={setProvider}>
-                            <SelectTrigger className="w-full max-w-48">
-                                <SelectValue placeholder="选择模型" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-background">
-                                <SelectGroup>
-                                    <SelectLabel>请选择模型</SelectLabel>
-                                    {PROVIDER_OPTIONS.map((item) => (
-                                        <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
-                                    ))}
-                                </SelectGroup>
-                            </SelectContent>
-                        </Select>
-                    </div>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 px-3 text-xs gap-1"
+                            >
+                                {PROVIDER_OPTIONS.find(p => p.value === provider)?.label || 'Mock'}
+                                <ChevronDown className="w-3 h-3" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start">
+                            {PROVIDER_OPTIONS.map((option) => (
+                                <DropdownMenuItem
+                                    key={option.value}
+                                    onClick={() => setProvider(option.value)}
+                                    className="text-xs"
+                                >
+                                    {option.label}
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
                 {/* 消息列表 - 不再传递回调，通过全局操作注册 */}
                 <MessageList

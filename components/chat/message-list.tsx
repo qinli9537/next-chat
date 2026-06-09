@@ -22,6 +22,8 @@ interface MessageListProps {
     welcomeQuestions?: QuestionItem[]
     /** 建议列表 */
     suggestions?: SuggestionItem[]
+    /** 建议展示模式 */
+    suggestionMode?: 'default' | 'dropdown'
 }
 
 export function MessageList({
@@ -29,6 +31,7 @@ export function MessageList({
     isStreaming,
     welcomeQuestions = [],
     suggestions = [],
+    suggestionMode = 'default',
 }: MessageListProps) {
     // 从全局操作注册表获取操作
     const operationsMap = useChatStore((state) => state.operationsMap)
@@ -172,6 +175,7 @@ export function MessageList({
                                 items={suggestions}
                                 onSelect={(prompt) => operationsMap[OPERATION_NAMES.SUGGESTION_SELECT]?.(prompt)}
                                 className="mt-1 ml-12"
+                                mode={suggestionMode}
                             />
                         )}
                     </>
@@ -181,7 +185,7 @@ export function MessageList({
 
             {/* 快速定位按钮：根据滚动状态显示向上/向下箭头，互斥显示 */}
             {(canScrollUp || canScrollDown) && (
-                <div className="absolute right-58 bottom-4 z-10">
+                <div className="absolute right-4 bottom-4 z-10">
                     {canScrollUp && (
                         <Button
                             variant="outline"
